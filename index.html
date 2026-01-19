@@ -1,0 +1,1600 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gioco del Fato</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4A148C 0%, #7B1FA2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .connection-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            z-index: 1000;
+        }
+
+        .connected {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .disconnected {
+            background: #F44336;
+            color: white;
+        }
+
+        .mode-selection {
+            padding: 50px 30px;
+            text-align: center;
+        }
+
+        .mode-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .mode-card {
+            background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%);
+            border-radius: 15px;
+            padding: 40px 30px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 3px solid transparent;
+        }
+
+        .mode-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            border-color: #7B1FA2;
+        }
+
+        .mode-card h3 {
+            color: #4A148C;
+            font-size: 1.8em;
+            margin-bottom: 15px;
+        }
+
+        .mode-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+        }
+
+        .setup-section, .game-section, .join-section {
+            display: none;
+            padding: 30px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #4A148C;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #7B1FA2;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #7B1FA2 0%, #9C27B0 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #666 0%, #888 100%);
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 14px;
+            width: auto;
+            margin: 5px 2px;
+        }
+
+        .qr-section {
+            background: #f5f5f5;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            margin: 30px 0;
+        }
+
+        .game-id {
+            background: #4A148C;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 1.8em;
+            font-weight: bold;
+            letter-spacing: 5px;
+            margin: 20px 0;
+            font-family: monospace;
+        }
+
+        .qr-code {
+            margin: 20px auto;
+            display: inline-block;
+        }
+
+        .player-role {
+            background: linear-gradient(135deg, #FFD700 0%, #FFA000 100%);
+            color: #000;
+            padding: 10px 20px;
+            border-radius: 20px;
+            display: inline-block;
+            font-weight: bold;
+            margin: 10px 5px;
+        }
+
+        .spectator-role {
+            background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+            color: white;
+        }
+
+        .game-timer {
+            background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            display: inline-block;
+            font-weight: bold;
+            margin: 10px 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 1.1em;
+        }
+
+        .winner-badge {
+            background: linear-gradient(135deg, #FFD700 0%, #FFA000 100%);
+            color: #000;
+            padding: 15px 25px;
+            border-radius: 20px;
+            display: inline-block;
+            font-weight: bold;
+            margin: 10px 5px;
+            font-size: 1.3em;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+            animation: winner-pulse 2s infinite;
+        }
+
+        @keyframes winner-pulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 20px rgba(255, 215, 0, 0.6); }
+            50% { transform: scale(1.05); box-shadow: 0 0 30px rgba(255, 215, 0, 0.9); }
+        }
+
+        .game-layout {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 30px;
+        }
+
+        @media (max-width: 1200px) {
+            .game-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .players-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .player-card {
+            background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%);
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.3s;
+            border: 3px solid transparent;
+        }
+
+        .player-card.active {
+            border-color: #FFD700;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+            transform: scale(1.02);
+        }
+
+        .player-card.eliminated {
+            opacity: 0.5;
+            background: linear-gradient(135deg, #ffcdd2 0%, #ef9a9a 100%);
+        }
+
+        .player-name {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #4A148C;
+            margin-bottom: 10px;
+        }
+
+        .player-hp {
+            font-size: 2.2em;
+            font-weight: bold;
+            color: #7B1FA2;
+            margin: 15px 0;
+        }
+
+        .player-hp.low {
+            color: #D32F2F;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-10px); }
+            20%, 40%, 60%, 80% { transform: translateX(10px); }
+        }
+
+        @keyframes heal-pulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7); }
+            50% { transform: scale(1.05); box-shadow: 0 0 20px 10px rgba(76, 175, 80, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
+        }
+
+        @keyframes death-fade {
+            0% { opacity: 1; transform: scale(1) rotate(0deg); }
+            100% { opacity: 0.3; transform: scale(0.9) rotate(-5deg); }
+        }
+
+        @keyframes revive-glow {
+            0% { transform: scale(0.8); opacity: 0; box-shadow: 0 0 0 0 rgba(156, 39, 176, 0); }
+            50% { transform: scale(1.1); opacity: 1; box-shadow: 0 0 30px 15px rgba(156, 39, 176, 0.8); }
+            100% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 0 rgba(156, 39, 176, 0); }
+        }
+
+        .animate-damage {
+            animation: shake 0.5s;
+        }
+
+        .animate-heal {
+            animation: heal-pulse 0.8s;
+        }
+
+        .animate-death {
+            animation: death-fade 1s forwards;
+        }
+
+        .animate-revive {
+            animation: revive-glow 1.2s;
+        }
+
+        .turn-indicator {
+            background: linear-gradient(135deg, #FFD700 0%, #FFA000 100%);
+            color: #000;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+
+        .eliminated-badge {
+            background: #F44336;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            display: inline-block;
+            margin-top: 5px;
+        }
+
+        .dice-calculator {
+            background: #f5f5f5;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .dice-inputs {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .dice-input {
+            flex: 1;
+            min-width: 100px;
+        }
+
+        .dice-input input {
+            width: 100%;
+            padding: 15px;
+            font-size: 24px;
+            text-align: center;
+            border: 3px solid #7B1FA2;
+            border-radius: 8px;
+        }
+
+        .result-box {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .result-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #7B1FA2;
+            margin: 10px 0;
+        }
+
+        .target-highlight {
+            background: #FFD700;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .hp-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .hp-btn {
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 13px;
+        }
+
+        .hp-btn.damage {
+            background: #F44336;
+            color: white;
+        }
+
+        .hp-btn.heal {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .hp-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .card-panel {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .card-panel h3 {
+            color: #4A148C;
+            margin-bottom: 15px;
+        }
+
+        .direction-indicator {
+            background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.1em;
+        }
+
+        .log-section {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .log-entry {
+            padding: 10px;
+            background: white;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            border-left: 4px solid #7B1FA2;
+        }
+
+        .log-entry.damage {
+            border-left-color: #F44336;
+        }
+
+        .log-entry.heal {
+            border-left-color: #4CAF50;
+        }
+
+        .log-entry.special {
+            border-left-color: #FF9800;
+        }
+
+        .info-box {
+            background: #E3F2FD;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #7B1FA2;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="connection-status disconnected" id="connectionStatus">
+        🔴 Connessione...
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>🎲 GIOCO DEL FATO 🎲</h1>
+            <p>Firebase Real-Time Edition</p>
+        </div>
+
+        <!-- MODE SELECTION -->
+        <div class="mode-selection" id="modeSelection">
+            <h2 style="color: #4A148C; margin-bottom: 30px;">Scegli modalità</h2>
+            <div class="mode-buttons">
+                <div class="mode-card" onclick="selectMode('host')">
+                    <div class="mode-icon">👑</div>
+                    <h3>Crea Partita</h3>
+                    <p>Gestisci la partita e genera il QR code per gli altri giocatori.</p>
+                </div>
+                <div class="mode-card" onclick="selectMode('join')">
+                    <div class="mode-icon">📱</div>
+                    <h3>Unisciti</h3>
+                    <p>Inserisci il codice partita per vedere i punteggi in tempo reale.</p>
+                </div>
+            </div>
+            
+            <div class="info-box" style="max-width: 800px; margin: 30px auto;">
+                <strong>ℹ️ Come funziona:</strong>
+                <ul style="margin-top: 10px; text-align: left; line-height: 1.8;">
+                    <li><strong>Master:</strong> Crea partita, gestisce dadi e danni</li>
+                    <li><strong>Giocatori:</strong> Vedono HP e turni in tempo reale</li>
+                    <li><strong>Sincronizzazione:</strong> Automatica e istantanea</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- SETUP SECTION -->
+        <div class="setup-section" id="setupSection">
+            <button class="btn btn-secondary btn-small" onclick="backToMode()">← Indietro</button>
+            <h2 style="color: #4A148C; margin: 20px 0;">👑 Configura Partita</h2>
+            
+            <div class="input-group">
+                <label>Numero di Giocatori:</label>
+                <select id="numPlayers" onchange="updateHPRecommendation()">
+                    <option value="4">4 giocatori</option>
+                    <option value="5">5 giocatori</option>
+                    <option value="6" selected>6 giocatori</option>
+                    <option value="7">7 giocatori</option>
+                    <option value="8">8 giocatori</option>
+                    <option value="9">9 giocatori</option>
+                    <option value="10">10 giocatori</option>
+                    <option value="11">11 giocatori</option>
+                    <option value="12">12 giocatori</option>
+                    <option value="13">13 giocatori</option>
+                    <option value="14">14 giocatori</option>
+                    <option value="15">15 giocatori</option>
+                    <option value="16">16 giocatori</option>
+                    <option value="17">17 giocatori</option>
+                    <option value="18">18 giocatori</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label>Punti Vita Iniziali:</label>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button class="btn btn-small" onclick="useRecommendedHP()">Consigliati</button>
+                    <input type="number" id="startingHP" min="10" max="200" value="70" style="flex: 1;">
+                    <span id="hpRecommendation" style="color: #666; font-size: 0.9em;">Cons: 70</span>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label>Nomi Giocatori:</label>
+                <div id="playerInputs"></div>
+            </div>
+
+            <button class="btn" onclick="createGame()">🚀 Crea Partita</button>
+        </div>
+
+        <!-- JOIN SECTION -->
+        <div class="join-section" id="joinSection">
+            <button class="btn btn-secondary btn-small" onclick="backToMode()">← Indietro</button>
+            <h2 style="color: #4A148C; margin: 20px 0;">📱 Unisciti alla Partita</h2>
+            
+            <div class="input-group">
+                <label>Codice Partita:</label>
+                <input type="text" id="joinCode" placeholder="ABC123" style="text-transform: uppercase; font-size: 24px; text-align: center; letter-spacing: 3px;">
+            </div>
+
+            <button class="btn" onclick="joinGame()">🎮 Unisciti</button>
+        </div>
+
+        <!-- GAME SECTION -->
+        <div class="game-section" id="gameSection">
+            <div class="qr-section" id="qrSection" style="display: none;">
+                <h3 style="color: #4A148C;">📱 Condividi Partita</h3>
+                <div class="game-id" id="gameIdDisplay">------</div>
+                <p>Scansiona o condividi questo codice</p>
+                <div class="qr-code" id="qrCodeContainer"></div>
+                <button class="btn btn-secondary btn-small" onclick="copyGameLink()">📋 Copia Link</button>
+            </div>
+
+            <div class="player-role" id="playerRole">👁️ SPETTATORE</div>
+            <div class="game-timer" id="gameTimer" style="display: none;">⏱️ 00:00</div>
+            <div class="winner-badge" id="winnerBadge" style="display: none;">🏆 VINCITORE: Nome</div>
+
+            <div class="game-layout">
+                <div class="main-area">
+                    <!-- DICE CALCULATOR -->
+                    <div class="dice-calculator" id="diceCalculator" style="display: none;">
+                        <h3>🎲 Calcolatore Dadi</h3>
+                        
+                        <div style="margin-bottom: 20px;">
+                            <label style="color: #4A148C; font-weight: bold; margin-bottom: 10px; display: block;">Numero Dadi:</label>
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                <button class="btn btn-small" onclick="setDiceCount(1)" id="btn-dice-1">1 Dado</button>
+                                <button class="btn btn-small" onclick="setDiceCount(2)" id="btn-dice-2">2 Dadi</button>
+                                <button class="btn btn-small" onclick="setDiceCount(3)" id="btn-dice-3">3 Dadi ✓</button>
+                                <button class="btn btn-small" onclick="setDiceCount(4)" id="btn-dice-4">4 Dadi</button>
+                            </div>
+                        </div>
+                        
+                        <div class="dice-inputs">
+                            <div class="dice-input" id="d1-container">
+                                <input type="number" id="d1" min="1" max="6" placeholder="?" oninput="calculateDamage()">
+                            </div>
+                            <div class="dice-input" id="d2-container">
+                                <input type="number" id="d2" min="1" max="6" placeholder="?" oninput="calculateDamage()">
+                            </div>
+                            <div class="dice-input" id="d3-container">
+                                <input type="number" id="d3" min="1" max="6" placeholder="?" oninput="calculateDamage()">
+                            </div>
+                            <div class="dice-input" id="d4-container" style="display: none;">
+                                <input type="number" id="d4" min="1" max="6" placeholder="?" oninput="calculateDamage()">
+                            </div>
+                        </div>
+                        
+                        <div class="result-box" id="resultBox" style="display: none;">
+                            <h4 id="resultType"></h4>
+                            <div class="result-value" id="damageValue"></div>
+                            <div id="bonusInfo"></div>
+                            <div class="target-highlight" id="targetInfo"></div>
+                            <button class="btn" onclick="applyDamage()">Applica Danno</button>
+                        </div>
+                    </div>
+
+                    <!-- PLAYERS -->
+                    <div class="players-grid" id="playersGrid"></div>
+                </div>
+
+                <div class="sidebar">
+                    <!-- CONTROLS -->
+                    <div class="card-panel">
+                        <h3>⚙️ Controlli</h3>
+                        <div class="direction-indicator" id="directionIndicator">↻ Orario</div>
+                        <div style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;" id="masterControls" style="display: none;">
+                            <button class="btn btn-small btn-secondary" onclick="toggleDirection()">🔄 Inverti</button>
+                            <button class="btn btn-small" onclick="manualChangeTurn()">🎯 Cambia Turno</button>
+                        </div>
+                    </div>
+
+                    <!-- LOG -->
+                    <div class="log-section">
+                        <h3 style="color: #4A148C; margin-bottom: 15px;">📜 Storico</h3>
+                        <div id="gameLog"></div>
+                    </div>
+
+                    <button class="btn btn-secondary" onclick="endGame()" id="endGameBtn" style="display: none;">🏁 Termina</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    
+    <!-- QR Code Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <script>
+        // Wait for Firebase to load
+        window.addEventListener('load', function() {
+            initializeApp();
+        });
+
+        function initializeApp() {
+            // ================================
+            // CONFIGURAZIONE FIREBASE
+            // ================================
+            // IMPORTANTE: Sostituisci SOLO i valori tra virgolette con i tuoi dati!
+            const firebaseConfig = {
+  apiKey: "AIzaSyAv1tYe2jwc3abq128Ci5PvJK1HTTuF3tY",
+  authDomain: "gioco-del-fato.firebaseapp.com",
+  databaseURL: "https://gioco-del-fato-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "gioco-del-fato",
+  storageBucket: "gioco-del-fato.firebasestorage.app",
+  messagingSenderId: "358068623557",
+  appId: "1:358068623557:web:dad9bbba9da419e186f8ac"
+            };
+
+            // Check if Firebase is loaded
+            if (typeof firebase === 'undefined') {
+                console.error('Firebase non caricato!');
+                alert('ERRORE: Firebase non caricato. Controlla la connessione internet.');
+                updateConnectionStatus(false);
+                return;
+            }
+
+            // Inizializza Firebase
+            try {
+                console.log("Inizializzazione Firebase...");
+                app = firebase.initializeApp(firebaseConfig);
+                database = firebase.database();
+                
+                // Test connessione
+                database.ref('.info/connected').on('value', (snapshot) => {
+                    if (snapshot.val() === true) {
+                        console.log("✅ Connesso a Firebase!");
+                        updateConnectionStatus(true);
+                    } else {
+                        console.log("❌ Disconnesso da Firebase");
+                        updateConnectionStatus(false);
+                    }
+                });
+                
+            } catch (error) {
+                console.error("Errore Firebase:", error);
+                alert("ERRORE Firebase: " + error.message);
+                updateConnectionStatus(false);
+            }
+        }
+
+        // ================================
+        // VARIABILI GLOBALI
+        // ================================
+        let app, database, gameRef;
+        let currentGameId = null;
+        let isHost = false;
+        let gameData = null;
+        let activeDiceCount = 3;
+        let calculatedDamage = 0;
+        let targetPlayer = null;
+        let isPair = false;
+        let isTris = false;
+        let timerInterval = null;
+
+        const HP_VALUES = {
+            4: 60, 5: 70, 6: 70, 7: 75, 8: 75, 9: 80, 10: 80, 11: 80, 12: 80,
+            13: 85, 14: 85, 15: 85, 16: 90, 17: 90, 18: 90
+        };
+
+        // ================================
+        // UTILITY FUNCTIONS
+        // ================================
+        function generateGameId() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let id = '';
+            for (let i = 0; i < 6; i++) {
+                id += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return id;
+        }
+
+        function updateConnectionStatus(connected) {
+            const el = document.getElementById('connectionStatus');
+            el.className = connected ? 'connection-status connected' : 'connection-status disconnected';
+            el.textContent = connected ? '🟢 Connesso' : '🔴 Offline';
+        }
+
+        // ================================
+        // MODE SELECTION
+        // ================================
+        function selectMode(mode) {
+            document.getElementById('modeSelection').style.display = 'none';
+            
+            if (mode === 'host') {
+                isHost = true;
+                document.getElementById('setupSection').style.display = 'block';
+                generatePlayerInputs();
+            } else {
+                isHost = false;
+                document.getElementById('joinSection').style.display = 'block';
+            }
+        }
+
+        function backToMode() {
+            document.getElementById('modeSelection').style.display = 'block';
+            document.getElementById('setupSection').style.display = 'none';
+            document.getElementById('joinSection').style.display = 'none';
+            document.getElementById('gameSection').style.display = 'none';
+        }
+
+        // ================================
+        // SETUP
+        // ================================
+        function generatePlayerInputs() {
+            const num = parseInt(document.getElementById('numPlayers').value);
+            const container = document.getElementById('playerInputs');
+            container.innerHTML = '';
+            
+            for (let i = 0; i < num; i++) {
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.id = `player${i}`;
+                input.placeholder = `Giocatore ${i + 1}`;
+                input.value = `Giocatore ${i + 1}`;
+                input.style.marginBottom = '10px';
+                container.appendChild(input);
+            }
+            
+            updateHPRecommendation();
+        }
+
+        function updateHPRecommendation() {
+            const num = parseInt(document.getElementById('numPlayers').value);
+            const hp = HP_VALUES[num];
+            document.getElementById('hpRecommendation').textContent = `Cons: ${hp}`;
+            document.getElementById('startingHP').value = hp;
+        }
+
+        function useRecommendedHP() {
+            updateHPRecommendation();
+        }
+
+        // ================================
+        // CREATE GAME
+        // ================================
+        async function createGame() {
+            try {
+                const num = parseInt(document.getElementById('numPlayers').value);
+                const startingHP = parseInt(document.getElementById('startingHP').value);
+                
+                if (startingHP < 10 || startingHP > 200) {
+                    alert('HP deve essere 10-200!');
+                    return;
+                }
+                
+                const players = [];
+                for (let i = 0; i < num; i++) {
+                    const nameInput = document.getElementById(`player${i}`);
+                    const name = nameInput ? nameInput.value : `Giocatore ${i + 1}`;
+                    players.push({
+                        id: i,
+                        name: name || `Giocatore ${i + 1}`,
+                        hp: startingHP,
+                        maxHp: startingHP,
+                        eliminated: false,
+                        skipTurn: false
+                    });
+                }
+                
+                currentGameId = generateGameId();
+                gameData = {
+                    id: currentGameId,
+                    players: players,
+                    currentTurn: 0,
+                    clockwise: true,
+                    activeDiceCount: 3,
+                    log: [],
+                    createdAt: Date.now()
+                };
+                
+                console.log('Creating game with ID:', currentGameId);
+                console.log('Game data:', gameData);
+                
+                gameRef = database.ref('games/' + currentGameId);
+                await gameRef.set(gameData);
+                
+                console.log('Game created successfully');
+                
+                // Listen for changes
+                gameRef.on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        gameData = data;
+                        renderGame();
+                    }
+                });
+                
+                showGameScreen();
+                generateQRCode();
+                addLog('🎮 Partita creata!');
+                
+                console.log('Game setup complete');
+            } catch (error) {
+                console.error('Error creating game:', error);
+                alert('Errore creazione partita: ' + error.message);
+            }
+        }
+
+        // ================================
+        // JOIN GAME
+        // ================================
+        async function joinGame() {
+            try {
+                const code = document.getElementById('joinCode').value.toUpperCase().trim();
+                
+                if (code.length !== 6) {
+                    alert('Codice deve essere 6 caratteri!');
+                    return;
+                }
+                
+                console.log('Joining game:', code);
+                
+                currentGameId = code;
+                gameRef = database.ref('games/' + currentGameId);
+                
+                const snapshot = await gameRef.once('value');
+                
+                if (!snapshot.exists()) {
+                    alert('Partita non trovata!');
+                    return;
+                }
+                
+                gameData = snapshot.val();
+                
+                // Ensure log exists
+                if (!gameData.log) {
+                    gameData.log = [];
+                }
+                
+                console.log('Joined game successfully');
+                
+                // Listen for changes
+                gameRef.on('value', (snapshot) => {
+                    if (snapshot.exists()) {
+                        const data = snapshot.val();
+                        if (data) {
+                            gameData = data;
+                            if (!gameData.log) gameData.log = [];
+                            renderGame();
+                        }
+                    }
+                });
+                
+                showGameScreen();
+            } catch (error) {
+                console.error('Error joining game:', error);
+                alert('Errore: ' + error.message);
+            }
+        }
+
+        function showGameScreen() {
+            document.getElementById('setupSection').style.display = 'none';
+            document.getElementById('joinSection').style.display = 'none';
+            document.getElementById('gameSection').style.display = 'block';
+            
+            if (isHost) {
+                document.getElementById('qrSection').style.display = 'block';
+                document.getElementById('diceCalculator').style.display = 'block';
+                document.getElementById('masterControls').style.display = 'flex';
+                document.getElementById('endGameBtn').style.display = 'block';
+                document.getElementById('playerRole').textContent = '👑 MASTER';
+                document.getElementById('playerRole').className = 'player-role';
+                document.getElementById('gameIdDisplay').textContent = currentGameId;
+                document.getElementById('gameTimer').style.display = 'none';
+            } else {
+                document.getElementById('qrSection').style.display = 'none';
+                document.getElementById('diceCalculator').style.display = 'none';
+                document.getElementById('masterControls').style.display = 'none';
+                document.getElementById('endGameBtn').style.display = 'none';
+                document.getElementById('playerRole').textContent = '👁️ SPETTATORE';
+                document.getElementById('playerRole').className = 'player-role spectator-role';
+                document.getElementById('gameTimer').style.display = 'inline-block';
+                startGameTimer();
+            }
+            
+            renderGame();
+        }
+
+        function startGameTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            
+            timerInterval = setInterval(() => {
+                if (!gameData || !gameData.createdAt) return;
+                
+                const elapsed = Date.now() - gameData.createdAt;
+                const seconds = Math.floor(elapsed / 1000);
+                const minutes = Math.floor(seconds / 60);
+                const hours = Math.floor(minutes / 60);
+                
+                const displayMinutes = minutes % 60;
+                const displaySeconds = seconds % 60;
+                
+                let timeString = '';
+                if (hours > 0) {
+                    timeString = `${hours}:${String(displayMinutes).padStart(2, '0')}:${String(displaySeconds).padStart(2, '0')}`;
+                } else {
+                    timeString = `${String(displayMinutes).padStart(2, '0')}:${String(displaySeconds).padStart(2, '0')}`;
+                }
+                
+                document.getElementById('gameTimer').textContent = `⏱️ ${timeString}`;
+            }, 1000);
+        }
+
+        // ================================
+        // QR CODE
+        // ================================
+        function generateQRCode() {
+            const container = document.getElementById('qrCodeContainer');
+            container.innerHTML = '';
+            const url = window.location.origin + window.location.pathname + '?game=' + currentGameId;
+            new QRCode(container, {
+                text: url,
+                width: 200,
+                height: 200
+            });
+        }
+
+        function copyGameLink() {
+            const url = window.location.origin + window.location.pathname + '?game=' + currentGameId;
+            navigator.clipboard.writeText(url);
+            alert('Link copiato!');
+        }
+
+        // ================================
+        // RENDER GAME
+        // ================================
+        function renderGame() {
+            if (!gameData) return;
+            
+            // Initialize log if missing
+            if (!gameData.log) {
+                gameData.log = [];
+            }
+            
+            // Show winner badge if there's a winner
+            const winnerBadge = document.getElementById('winnerBadge');
+            if (gameData.winner && !isHost) {
+                winnerBadge.textContent = `🏆 VINCITORE: ${gameData.winner}`;
+                winnerBadge.style.display = 'inline-block';
+            } else {
+                winnerBadge.style.display = 'none';
+            }
+            
+            const grid = document.getElementById('playersGrid');
+            grid.innerHTML = '';
+            
+            // Keep original order for both host and spectators
+            let playersToRender = [...gameData.players];
+            
+            playersToRender.forEach((player, displayIndex) => {
+                const card = document.createElement('div');
+                let cls = 'player-card';
+                
+                // Check if this player has the current turn (use original index)
+                if (player.id === gameData.currentTurn && !player.eliminated) {
+                    cls += ' active';
+                }
+                if (player.eliminated) {
+                    cls += ' eliminated';
+                }
+                
+                card.className = cls;
+                
+                const hpCls = player.hp <= player.maxHp * 0.2 && !player.eliminated ? 'low' : '';
+                
+                // Build last action display
+                let lastActionHtml = '';
+                if (!isHost && player.lastAction) {
+                    const action = player.lastAction;
+                    const timeSince = Math.floor((Date.now() - action.timestamp) / 1000);
+                    const timeText = timeSince < 60 ? 'ora' : `${Math.floor(timeSince / 60)}m fa`;
+                    
+                    // Check if it's healing or damage
+                    const isHealing = action.type === 'TRIS';
+                    const cardIcon = (action.type === 'COPPIA' || action.type === 'TRIS') ? ' 🃏' : '';
+                    
+                    lastActionHtml = `
+                        <div style="background: rgba(123, 31, 162, 0.1); padding: 10px; border-radius: 8px; margin-top: 10px; font-size: 0.85em;">
+                            <div style="color: #7B1FA2; font-weight: bold; margin-bottom: 5px;">
+                                🎲 ${action.type}${cardIcon}
+                            </div>
+                            <div style="color: #666;">
+                                Dadi: ${action.dice}
+                            </div>
+                            <div style="color: #F44336; font-weight: bold; margin-top: 5px;">
+                                💥 ${action.damage} danni → ${action.target}
+                            </div>
+                            ${isHealing ? `
+                                <div style="color: #4CAF50; font-weight: bold; margin-top: 3px;">
+                                    💚 +${action.damage} HP
+                                </div>
+                            ` : ''}
+                            <div style="color: #999; font-size: 0.9em; margin-top: 3px;">
+                                ${timeText}
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                card.innerHTML = `
+                    ${player.id === gameData.currentTurn && !player.eliminated ? '<div class="turn-indicator">🎯 TURNO</div>' : ''}
+                    <div class="player-name">${player.name}</div>
+                    <div class="player-hp ${hpCls}">${player.hp} HP</div>
+                    <div style="color: #666; font-size: 0.9em;">Max: ${player.maxHp}</div>
+                    ${player.eliminated ? '<div class="eliminated-badge">☠️ ELIMINATO</div>' : ''}
+                    ${lastActionHtml}
+                    ${isHost && !player.eliminated ? `
+                        <div class="hp-controls">
+                            <button class="hp-btn damage" onclick="quickDamage(${player.id})">💥</button>
+                            <button class="hp-btn heal" onclick="quickHeal(${player.id})">❤️</button>
+                        </div>
+                    ` : ''}
+                    ${isHost && player.eliminated ? `
+                        <button class="hp-btn heal" onclick="quickHeal(${player.id})" style="grid-column: span 2;">👻 Rianima</button>
+                    ` : ''}
+                `;
+                
+                grid.appendChild(card);
+            });
+            
+            document.getElementById('directionIndicator').textContent = gameData.clockwise ? '↻ Orario' : '↺ Antiorario';
+            
+            const logEl = document.getElementById('gameLog');
+            if (gameData.log && gameData.log.length > 0) {
+                logEl.innerHTML = gameData.log.slice(0, 50).reverse().map(entry => `
+                    <div class="log-entry ${entry.type || ''}">
+                        <strong>${entry.time}</strong> - ${entry.message}
+                    </div>
+                `).join('');
+            } else {
+                logEl.innerHTML = '<div style="color: #999; text-align: center; padding: 20px;">Nessuna azione ancora</div>';
+            }
+        }
+
+        // ================================
+        // DICE CALCULATOR
+        // ================================
+        function setDiceCount(count) {
+            activeDiceCount = count;
+            
+            for (let i = 1; i <= 4; i++) {
+                const btn = document.getElementById(`btn-dice-${i}`);
+                if (i === count) {
+                    btn.style.background = 'linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%)';
+                    btn.textContent = btn.textContent.replace(' ✓', '') + ' ✓';
+                } else {
+                    btn.style.background = 'linear-gradient(135deg, #7B1FA2 0%, #9C27B0 100%)';
+                    btn.textContent = btn.textContent.replace(' ✓', '');
+                }
+            }
+            
+            for (let i = 1; i <= 4; i++) {
+                const container = document.getElementById(`d${i}-container`);
+                const input = document.getElementById(`d${i}`);
+                if (i <= count) {
+                    container.style.display = 'block';
+                } else {
+                    container.style.display = 'none';
+                    input.value = '';
+                }
+            }
+            
+            calculateDamage();
+        }
+
+        function calculateDamage() {
+            const diceValues = [];
+            for (let i = 1; i <= activeDiceCount; i++) {
+                const val = parseInt(document.getElementById(`d${i}`).value);
+                if (!val || val < 1 || val > 6) {
+                    document.getElementById('resultBox').style.display = 'none';
+                    return;
+                }
+                diceValues.push(val);
+            }
+            
+            const dice = [...diceValues].sort();
+            const sum = diceValues.reduce((a, b) => a + b, 0);
+            
+            // Poker
+            if (activeDiceCount === 4 && dice.every(d => d === dice[0])) {
+                document.getElementById('resultType').textContent = `🎰 POKER di ${dice[0]}!`;
+                document.getElementById('damageValue').textContent = '🏆 VITTORIA!';
+                document.getElementById('bonusInfo').innerHTML = '<div style="color: #FFD700; font-weight: bold;">⭐ VINCI LA PARTITA! ⭐</div>';
+                document.getElementById('targetInfo').textContent = '';
+                document.getElementById('resultBox').style.display = 'block';
+                return;
+            }
+            
+            // Tris
+             if (activeDiceCount >= 3) {
+                // Conta quante volte appare ogni numero
+                const counts = {};
+                for (let i = 0; i < dice.length; i++) {
+                    counts[dice[i]] = (counts[dice[i]] || 0) + 1;
+                }
+                
+                // Trova il numero che appare 3+ volte
+                let trisValue = null;
+                for (let num in counts) {
+                    if (counts[num] >= 3) {
+                        trisValue = parseInt(num);
+                        break;
+                    }
+                }
+                
+                if (trisValue !== null) {
+                    isTris = true;
+                    isPair = false;
+                    
+                    // Calcolo TRIS: (valore × valore) + valore + eventuali dadi extra
+                    let baseDamage = (trisValue * trisValue) + trisValue;
+                    
+                    // Se ci sono 4 dadi, somma il 4° dado
+                    let extraDice = 0;
+                    if (activeDiceCount === 4) {
+                        // Trova il dado diverso
+                        for (let i = 0; i < diceValues.length; i++) {
+                            if (diceValues[i] !== trisValue) {
+                                extraDice = diceValues[i];
+                                break;
+                            }
+                        }
+                    }
+                    
+                    calculatedDamage = baseDamage + extraDice;
+                    
+                    // LOG PER DEBUG
+                    console.log('=== TRIS CALCULATION ===');
+                    console.log('Dice values:', diceValues);
+                    console.log('Tris value:', trisValue);
+                    console.log('Base damage:', trisValue, '×', trisValue, '+', trisValue, '=', baseDamage);
+                    console.log('Extra dice:', extraDice);
+                    console.log('TOTAL DAMAGE:', calculatedDamage);
+                    console.log('=======================');
+                    
+                    document.getElementById('resultType').textContent = `🎰 TRIS di ${trisValue}!`;
+                    document.getElementById('bonusInfo').innerHTML = `
+                        <div style="color: #4CAF50; font-weight: bold; margin-top: 10px;">
+                            ✨ Recuperi ${calculatedDamage} HP + Pesca Carta del Fato<br>
+                            <span style="font-size: 0.9em; color: #666;">Calcolo: (${trisValue}×${trisValue}) + ${trisValue}${extraDice > 0 ? ' + ' + extraDice : ''} = ${calculatedDamage}</span>
+                        </div>
+                    `;
+                    
+                    targetPlayer = findTarget(sum);
+                    document.getElementById('damageValue').textContent = `${calculatedDamage} DANNI`;
+                    document.getElementById('targetInfo').textContent = targetPlayer !== null ? `🎯 ${gameData.players[targetPlayer].name}` : '';
+                    document.getElementById('resultBox').style.display = 'block';
+                    return;
+                }
+            }
+            
+            // Coppia
+            if (activeDiceCount >= 2) {
+                const counts = {};
+                dice.forEach(d => counts[d] = (counts[d] || 0) + 1);
+                const pairVal = Object.keys(counts).find(k => counts[k] >= 2);
+                
+                if (pairVal) {
+                    const remaining = diceValues.filter(d => d != pairVal);
+                    const extra = remaining.reduce((a, b) => a + b, 0);
+                    
+                    isPair = true;
+                    isTris = false;
+                    calculatedDamage = parseInt(pairVal) * parseInt(pairVal) + extra;
+                    
+                    document.getElementById('resultType').textContent = `🎲 COPPIA di ${pairVal}`;
+                    document.getElementById('bonusInfo').innerHTML = `
+                        <div style="color: #2196F3; font-weight: bold;">
+                            ✨ Pesca Carta<br>
+                            <span style="font-size: 0.9em; color: #666;">${pairVal}×${pairVal} + ${extra} = ${calculatedDamage}</span>
+                        </div>
+                    `;
+                    
+                    targetPlayer = findTarget(sum);
+                    document.getElementById('damageValue').textContent = `${calculatedDamage} DANNI`;
+                    document.getElementById('targetInfo').textContent = targetPlayer !== null ? `🎯 ${gameData.players[targetPlayer].name}` : '';
+                    document.getElementById('resultBox').style.display = 'block';
+                    return;
+                }
+            }
+            
+            // Normale
+            isPair = false;
+            isTris = false;
+            calculatedDamage = sum;
+            
+            document.getElementById('resultType').textContent = `🎲 Normale`;
+            document.getElementById('bonusInfo').textContent = '';
+            document.getElementById('damageValue').textContent = `${calculatedDamage} DANNI`;
+            
+            targetPlayer = findTarget(sum);
+            document.getElementById('targetInfo').textContent = targetPlayer !== null ? `🎯 ${gameData.players[targetPlayer].name}` : '';
+            document.getElementById('resultBox').style.display = 'block';
+        }
+
+        function findTarget(count) {
+            let idx = gameData.currentTurn;
+            let steps = 0;
+            
+            while (steps < count) {
+                if (gameData.clockwise) {
+                    idx = (idx + 1) % gameData.players.length;
+                } else {
+                    idx = (idx - 1 + gameData.players.length) % gameData.players.length;
+                }
+                
+                if (idx !== gameData.currentTurn && !gameData.players[idx].eliminated) {
+                    steps++;
+                }
+            }
+            
+            return idx;
+        }
+
+        async function applyDamage() {
+            if (!isHost || targetPlayer === null) return;
+            
+            const target = gameData.players[targetPlayer];
+            const attacker = gameData.players[gameData.currentTurn];
+            
+            // Get dice values for display
+            const diceValues = [];
+            for (let i = 1; i <= activeDiceCount; i++) {
+                const val = parseInt(document.getElementById(`d${i}`).value);
+                if (val) diceValues.push(val);
+            }
+            
+            // Save last action
+            const actionType = isTris ? 'TRIS' : isPair ? 'COPPIA' : 'Normale';
+            attacker.lastAction = {
+                dice: diceValues.join(', '),
+                type: actionType,
+                damage: calculatedDamage,
+                target: target.name,
+                timestamp: Date.now()
+            };
+            
+            // Apply damage with animation
+            target.hp -= calculatedDamage;
+            playSound('damage');
+            animatePlayer(targetPlayer, 'damage');
+            
+            if (isTris) {
+                attacker.hp = Math.min(attacker.hp + calculatedDamage, attacker.maxHp + 50);
+                addLog(`💚 ${attacker.name} +${calculatedDamage} HP`, 'heal');
+                playSound('heal');
+                animatePlayer(gameData.currentTurn, 'heal');
+            }
+            
+            if (target.hp <= 0) {
+                target.hp = 0;
+                target.eliminated = true;
+                addLog(`☠️ ${target.name} ELIMINATO!`, 'damage');
+                playSound('death');
+                animatePlayer(targetPlayer, 'death');
+            }
+            
+            const type = isTris ? 'TRIS' : isPair ? 'COPPIA' : 'Normale';
+            addLog(`💥 ${attacker.name} → ${calculatedDamage} a ${target.name} (${type})`, 'damage');
+            
+            if (isPair || isTris) {
+                addLog(`🃏 ${attacker.name} pesca Carta`);
+            }
+            
+            for (let i = 1; i <= 4; i++) {
+                document.getElementById(`d${i}`).value = '';
+            }
+            document.getElementById('resultBox').style.display = 'none';
+            
+            await saveGame();
+            checkWinner();
+            
+            // Auto next turn
+            setTimeout(() => {
+                nextTurn();
+            }, 1500);
+        }
+
+        async function quickDamage(idx) {
+            if (!isHost) return;
+            const amt = prompt(`Danno a ${gameData.players[idx].name}:`);
+            if (!amt) return;
+            
+            const dmg = parseInt(amt);
+            gameData.players[idx].hp -= dmg;
+            
+            playSound('damage');
+            animatePlayer(idx, 'damage');
+            
+            if (gameData.players[idx].hp <= 0) {
+                gameData.players[idx].hp = 0;
+                gameData.players[idx].eliminated = true;
+                addLog(`☠️ ${gameData.players[idx].name} eliminato!`, 'damage');
+                playSound('death');
+                animatePlayer(idx, 'death');
+            }
+            
+            addLog(`💥 ${gameData.players[idx].name} -${dmg} HP`, 'damage');
+            await saveGame();
+            checkWinner();
+        }
+
+        async function quickHeal(idx) {
+            if (!isHost) return;
+            const amt = prompt(`Cura ${gameData.players[idx].name}:`);
+            if (!amt) return;
+            
+            const heal = parseInt(amt);
+            
+            // Check if reviving
+            if (gameData.players[idx].eliminated) {
+                gameData.players[idx].eliminated = false;
+                gameData.players[idx].hp = heal;
+                playSound('revive');
+                animatePlayer(idx, 'revive');
+                addLog(`👻 ${gameData.players[idx].name} risorge con ${heal} HP!`, 'heal');
+            } else {
+                gameData.players[idx].hp = Math.min(gameData.players[idx].hp + heal, gameData.players[idx].maxHp + 100);
+                playSound('heal');
+                animatePlayer(idx, 'heal');
+                addLog(`💚 ${gameData.players[idx].name} +${heal} HP`, 'heal');
+            }
+            
+            await saveGame();
+        }
+
+        async function nextTurn() {
+            if (!isHost) return;
+            
+            const alive = gameData.players.filter(p => !p.eliminated);
+            if (alive.length <= 1) return;
+            
+            let attempts = 0;
+            do {
+                if (gameData.clockwise) {
+                    gameData.currentTurn = (gameData.currentTurn + 1) % gameData.players.length;
+                } else {
+                    gameData.currentTurn = (gameData.currentTurn - 1 + gameData.players.length) % gameData.players.length;
+                }
+                attempts++;
+                if (attempts > gameData.players.length) break;
+            } while (gameData.players[gameData.currentTurn].eliminated);
+            
+            addLog(`🔄 Turno: ${gameData.players[gameData.currentTurn].name}`);
+            await saveGame();
+        }
+
+        async function toggleDirection() {
+            if (!isHost) return;
+            
+            gameData.clockwise = !gameData.clockwise;
+            addLog(`🔄 Senso: ${gameData.clockwise ? 'ORARIO' : 'ANTIORARIO'}`, 'special');
+            await saveGame();
+        }
+
+        function addLog(msg, type = '') {
+            if (!gameData.log) {
+                gameData.log = [];
+            }
+            
+            gameData.log.unshift({
+                message: msg,
+                type: type,
+                time: new Date().toLocaleTimeString()
+            });
+            
+            if (gameData.log.length > 100) {
+                gameData.log = gameData.log.slice(0, 100);
+            }
+        }
+
+        async function saveGame() {
+            if (!isHost || !gameRef || !gameData) return;
+            
+            try {
+                // Ensure log exists before saving
+                if (!gameData.log) {
+                    gameData.log = [];
+                }
+                
+                await gameRef.set(gameData);
+            } catch (e) {
+                console.error('Save error:', e);
+            }
+        }
+
+        function checkWinner() {
+            const alive = gameData.players.filter(p => !p.eliminated);
+            if (alive.length === 1) {
+                addLog(`🏆 ${alive[0].name} VINCE!`);
+                setTimeout(() => alert(`🏆 ${alive[0].name} VINCE con ${alive[0].hp} HP!`), 500);
+            }
+        }
+
+        async function endGame() {
+            if (!isHost) return;
+            
+            if (confirm('Terminare partita?')) {
+                // Find winner before ending
+                const alivePlayers = gameData.players.filter(p => !p.eliminated);
+                if (alivePlayers.length > 0) {
+                    // Sort by HP to find winner
+                    alivePlayers.sort((a, b) => b.hp - a.hp);
+                    gameData.winner = alivePlayers[0].name;
+                    addLog(`🏁 Partita terminata! 🏆 Vincitore: ${alivePlayers[0].name} con ${alivePlayers[0].hp} HP`);
+                    await saveGame();
+                }
+                
+                setTimeout(async () => {
+                    try {
+                        await gameRef.remove();
+                    } catch (e) {}
+                    
+                    if (timerInterval) clearInterval(timerInterval);
+                    location.reload();
+                }, 2000); // 2 seconds delay so spectators can see winner
+            }
+        }
+
+        // Auto-join from URL
+        window.addEventListener('load', () => {
+            const params = new URLSearchParams(window.location.search);
+            const gameId = params.get('game');
+            
+            if (gameId) {
+                document.getElementById('joinCode').value = gameId;
+                selectMode('join');
+                setTimeout(() => joinGame(), 500);
+            }
+        });
+
+        // Initialize
+        setDiceCount(3);
+
+        // ================================
+        // SOUND & ANIMATION SYSTEM
+        // ================================
+        const sounds = {
+            damage: new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIGGa47OihUxMKTKXh8bllHAU2jdXzzn0vBSh+zPDajzsKElyx6OyrWBUIQ5zd8sFuIwUqfs/v14s5CBZiturqpVIUCkyn4PG4Yh0FOIzU8tB+LwQnfM3x24w6ChFbrt/u'),
+            heal: new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIGGa47OihUxMKTKXh8bllHAU2jdXzzn0vBSh+zPDajzsKElyx6OyrWBUIQ5zd8sFuIwUqfs/v14s5CBZiturqpVIUCkyn4PG4Yh0FOIzU8tB+LwQnfM3x24w6ChFbrt/v'),
+            death: new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACAgH9/fn9+f4CAf39+f35/gICAf39+f35/gIB/f35/fn+AgIB/f35/fn+AgH9/fn9+f4CAgH9/fn9+f4CAf39+f35/gICAf39+f35/gIB/f35/fn+AgIB/f35/fn+AgH9/fn9+f4CAgH9/fn9+f4CAf39+f35/gICAf39+f35/gIB/f35/fn+AgIB/f35/fn+AgH9/fn9+f4CAgH9/fn9+f4CAf39+f35/gICAf39+f35/gIB/f35/fn8='),
+            revive: new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAAB/gIGDhIaHiYuMjpCRk5SWl5manJ2foKKjpaan')
+        };
+
+        function playSound(type) {
+            try {
+                const sound = sounds[type];
+                if (sound) {
+                    sound.currentTime = 0;
+                    sound.volume = 0.3;
+                    sound.play().catch(e => console.log('Audio play failed:', e));
+                }
+            } catch (e) {
+                console.log('Sound error:', e);
+            }
+        }
+
+        function animatePlayer(playerIndex, animationType) {
+            setTimeout(() => {
+                const cards = document.querySelectorAll('.player-card');
+                if (cards[playerIndex]) {
+                    cards[playerIndex].classList.add(`animate-${animationType}`);
+                    setTimeout(() => {
+                        cards[playerIndex].classList.remove(`animate-${animationType}`);
+                    }, 1200);
+                }
+            }, 100);
+        }
+
+        async function manualChangeTurn() {
+            if (!isHost) return;
+            
+            const alivePlayers = gameData.players.filter(p => !p.eliminated);
+            if (alivePlayers.length <= 1) return;
+            
+            const choices = alivePlayers.map((p, i) => `${p.id + 1}. ${p.name}`).join('\n');
+            const choice = prompt(`Seleziona giocatore (numero):\n${choices}`);
+            
+            if (!choice) return;
+            
+            const playerNum = parseInt(choice) - 1;
+            if (playerNum >= 0 && playerNum < gameData.players.length && !gameData.players[playerNum].eliminated) {
+                gameData.currentTurn = playerNum;
+                addLog(`🎯 Turno manuale: ${gameData.players[playerNum].name}`, 'special');
+                await saveGame();
+            } else {
+                alert('Numero non valido!');
+            }
+        }
+    </script>
+</body>
+</html>

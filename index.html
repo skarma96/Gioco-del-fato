@@ -2,8 +2,11 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Gioco del Fato</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <style>
         * {
             margin: 0;
@@ -13,1587 +16,2281 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #0a0a0f;
+            background-image: 
+                radial-gradient(circle at 20% 50%, rgba(120, 40, 200, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(200, 40, 120, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 40% 20%, rgba(40, 120, 200, 0.1) 0%, transparent 50%);
+            color: #e8e8e8;
             min-height: 100vh;
-            padding: 20px;
+            padding: 10px;
+            overflow-x: hidden;
+            transition: box-shadow 0.5s ease;
         }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            overflow: hidden;
+        
+        body.my-turn {
+            box-shadow: inset 0 0 0 5px #4ecca3, inset 0 0 30px rgba(78, 204, 163, 0.5);
+            animation: turnPulse 2s infinite;
         }
-
-        .header {
-            background: linear-gradient(135deg, #4A148C 0%, #7B1FA2 100%);
-            color: white;
-            padding: 30px;
-            text-align: center;
+        
+        @keyframes turnPulse {
+            0%, 100% { box-shadow: inset 0 0 0 5px #4ecca3, inset 0 0 30px rgba(78, 204, 163, 0.5); }
+            50% { box-shadow: inset 0 0 0 8px #4ecca3, inset 0 0 50px rgba(78, 204, 163, 0.8); }
         }
-
-        .header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        
+        /* Screen Flash Animations */
+        @keyframes damageFlash {
+            0% { background-color: rgba(255, 0, 0, 0); }
+            50% { background-color: rgba(255, 0, 0, 0.3); }
+            100% { background-color: rgba(255, 0, 0, 0); }
         }
-
-        .connection-status {
+        
+        @keyframes healFlash {
+            0% { background-color: rgba(78, 204, 163, 0); }
+            50% { background-color: rgba(78, 204, 163, 0.25); }
+            100% { background-color: rgba(78, 204, 163, 0); }
+        }
+        
+        @keyframes reviveFlash {
+            0% { background-color: rgba(255, 215, 0, 0); }
+            25% { background-color: rgba(255, 215, 0, 0.3); }
+            50% { background-color: rgba(78, 204, 163, 0.3); }
+            75% { background-color: rgba(255, 215, 0, 0.3); }
+            100% { background-color: rgba(255, 215, 0, 0); }
+        }
+        
+        .screen-flash {
             position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 10px 20px;
-            border-radius: 20px;
-            font-weight: bold;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 999;
+        }
+        
+        .screen-flash.damage {
+            animation: damageFlash 0.4s ease-out;
+        }
+        
+        .screen-flash.heal {
+            animation: healFlash 0.5s ease-out;
+        }
+        
+        .screen-flash.revive {
+            animation: reviveFlash 1s ease-out;
+        }
+        
+        /* Particle effects */
+        .particle {
+            position: fixed;
+            pointer-events: none;
             z-index: 1000;
+            font-size: 2em;
+            animation: particleFloat 1.5s ease-out forwards;
         }
-
-        .connected {
-            background: #4CAF50;
-            color: white;
-        }
-
-        .disconnected {
-            background: #F44336;
-            color: white;
-        }
-
-        .mode-selection {
-            padding: 50px 30px;
-            text-align: center;
-        }
-
-        .mode-buttons {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 30px;
-            max-width: 800px;
-            margin: 0 auto;
-        }
-
-        .mode-card {
-            background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%);
-            border-radius: 15px;
-            padding: 40px 30px;
-            cursor: pointer;
-            transition: all 0.3s;
-            border: 3px solid transparent;
-        }
-
-        .mode-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            border-color: #7B1FA2;
-        }
-
-        .mode-card h3 {
-            color: #4A148C;
-            font-size: 1.8em;
-            margin-bottom: 15px;
-        }
-
-        .mode-icon {
-            font-size: 4em;
-            margin-bottom: 20px;
-        }
-
-        .setup-section, .game-section, .join-section {
-            display: none;
-            padding: 30px;
-        }
-
-        .input-group {
-            margin-bottom: 20px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: bold;
-            color: #4A148C;
-        }
-
-        input, select {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            font-size: 16px;
-        }
-
-        input:focus, select:focus {
-            outline: none;
-            border-color: #7B1FA2;
-        }
-
-        .btn {
-            background: linear-gradient(135deg, #7B1FA2 0%, #9C27B0 100%);
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            border-radius: 8px;
-            font-size: 18px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: transform 0.2s;
-            width: 100%;
-            margin-top: 10px;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-        }
-
-        .btn-secondary {
-            background: linear-gradient(135deg, #666 0%, #888 100%);
-        }
-
-        .btn-small {
-            padding: 8px 16px;
-            font-size: 14px;
-            width: auto;
-            margin: 5px 2px;
-        }
-
-        .qr-section {
-            background: #f5f5f5;
-            padding: 30px;
-            border-radius: 12px;
-            text-align: center;
-            margin: 30px 0;
-        }
-
-        .game-id {
-            background: #4A148C;
-            color: white;
-            padding: 15px;
-            border-radius: 8px;
-            font-size: 1.8em;
-            font-weight: bold;
-            letter-spacing: 5px;
-            margin: 20px 0;
-            font-family: monospace;
-        }
-
-        .qr-code {
-            margin: 20px auto;
-            display: inline-block;
-        }
-
-        .player-role {
-            background: linear-gradient(135deg, #FFD700 0%, #FFA000 100%);
-            color: #000;
-            padding: 10px 20px;
-            border-radius: 20px;
-            display: inline-block;
-            font-weight: bold;
-            margin: 10px 5px;
-        }
-
-        .spectator-role {
-            background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
-            color: white;
-        }
-
-        .game-timer {
-            background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);
-            color: white;
-            padding: 10px 20px;
-            border-radius: 20px;
-            display: inline-block;
-            font-weight: bold;
-            margin: 10px 5px;
-            font-family: 'Courier New', monospace;
-            font-size: 1.1em;
-        }
-
-        .winner-badge {
-            background: linear-gradient(135deg, #FFD700 0%, #FFA000 100%);
-            color: #000;
-            padding: 15px 25px;
-            border-radius: 20px;
-            display: inline-block;
-            font-weight: bold;
-            margin: 10px 5px;
-            font-size: 1.3em;
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
-            animation: winner-pulse 2s infinite;
-        }
-
-        @keyframes winner-pulse {
-            0%, 100% { transform: scale(1); box-shadow: 0 0 20px rgba(255, 215, 0, 0.6); }
-            50% { transform: scale(1.05); box-shadow: 0 0 30px rgba(255, 215, 0, 0.9); }
-        }
-
-        .game-layout {
-            display: grid;
-            grid-template-columns: 1fr 380px;
-            gap: 30px;
-        }
-
-        @media (max-width: 1200px) {
-            .game-layout {
-                grid-template-columns: 1fr;
+        
+        @keyframes particleFloat {
+            0% {
+                opacity: 1;
+                transform: translate(0, 0) scale(1) rotate(0deg);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(var(--tx), var(--ty)) scale(0.3) rotate(360deg);
             }
         }
-
-        .players-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 20px;
-        }
-
-        .player-card {
-            background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%);
-            border-radius: 12px;
-            padding: 20px;
-            transition: all 0.3s;
-            border: 3px solid transparent;
-        }
-
-        .player-card.active {
-            border-color: #FFD700;
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
-            transform: scale(1.02);
-        }
-
-        .player-card.eliminated {
-            opacity: 0.5;
-            background: linear-gradient(135deg, #ffcdd2 0%, #ef9a9a 100%);
-        }
-
-        .player-name {
-            font-size: 1.3em;
-            font-weight: bold;
-            color: #4A148C;
-            margin-bottom: 10px;
-        }
-
-        .player-hp {
-            font-size: 2.2em;
-            font-weight: bold;
-            color: #7B1FA2;
-            margin: 15px 0;
-        }
-
-        .player-hp.low {
-            color: #D32F2F;
-            animation: pulse 1s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-        }
-
+        
         @keyframes shake {
             0%, 100% { transform: translateX(0); }
             10%, 30%, 50%, 70%, 90% { transform: translateX(-10px); }
             20%, 40%, 60%, 80% { transform: translateX(10px); }
         }
-
-        @keyframes heal-pulse {
-            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7); }
-            50% { transform: scale(1.05); box-shadow: 0 0 20px 10px rgba(76, 175, 80, 0); }
-            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
+        
+        body.shake {
+            animation: shake 0.5s ease;
         }
 
-        @keyframes death-fade {
-            0% { opacity: 1; transform: scale(1) rotate(0deg); }
-            100% { opacity: 0.3; transform: scale(0.9) rotate(-5deg); }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 15px;
         }
 
-        @keyframes revive-glow {
-            0% { transform: scale(0.8); opacity: 0; box-shadow: 0 0 0 0 rgba(156, 39, 176, 0); }
-            50% { transform: scale(1.1); opacity: 1; box-shadow: 0 0 30px 15px rgba(156, 39, 176, 0.8); }
-            100% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 0 rgba(156, 39, 176, 0); }
+        h1 {
+            text-align: center;
+            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 50%, #ffd700 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+            margin-bottom: 20px;
+            font-size: 2em;
+            font-weight: 900;
+            letter-spacing: 2px;
+            position: relative;
+        }
+        
+        h1::after {
+            content: '🎲 Gioco del Fato 🎲';
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 0;
+            -webkit-text-fill-color: #ffd700;
+            z-index: -1;
+            filter: blur(20px);
+            opacity: 0.5;
         }
 
-        .animate-damage {
-            animation: shake 0.5s;
-        }
-
-        .animate-heal {
-            animation: heal-pulse 0.8s;
-        }
-
-        .animate-death {
-            animation: death-fade 1s forwards;
-        }
-
-        .animate-revive {
-            animation: revive-glow 1.2s;
-        }
-
-        .turn-indicator {
-            background: linear-gradient(135deg, #FFD700 0%, #FFA000 100%);
-            color: #000;
-            padding: 8px 16px;
+        .setup-screen, .game-screen {
+            background: rgba(20, 20, 30, 0.7);
+            border: 1px solid rgba(255, 215, 0, 0.2);
             border-radius: 20px;
-            font-size: 0.9em;
-            font-weight: bold;
-            display: inline-block;
+            padding: 25px;
+            box-shadow: 
+                0 8px 32px rgba(0, 0, 0, 0.5),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1),
+                0 0 60px rgba(255, 215, 0, 0.1);
+            backdrop-filter: blur(20px);
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: 600;
+            font-size: 0.95em;
+            letter-spacing: 0.5px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            border-radius: 12px;
+            background: rgba(20, 20, 30, 0.8);
+            color: #e8e8e8;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #ffd700;
+            background: rgba(30, 30, 40, 0.9);
+            box-shadow: 
+                inset 0 2px 4px rgba(0, 0, 0, 0.3),
+                0 0 20px rgba(255, 215, 0, 0.3);
+        }
+
+        button {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #d4af37 0%, #ffd700 50%, #ffed4e 100%);
+            color: #1a1a2e;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: all 0.3s ease;
+            box-shadow: 
+                0 4px 15px rgba(255, 215, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 
+                0 6px 25px rgba(255, 215, 0, 0.5),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            background: linear-gradient(135deg, #ffed4e 0%, #ffd700 50%, #d4af37 100%);
+        }
+
+        button:active {
+            transform: translateY(-1px);
+        }
+
+        button:disabled {
+            background: linear-gradient(135deg, #555 0%, #666 100%);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .player-input {
+            display: flex;
+            gap: 10px;
             margin-bottom: 10px;
         }
 
-        .eliminated-badge {
-            background: #F44336;
-            color: white;
-            padding: 5px 10px;
+        .player-input input {
+            flex: 1;
+        }
+
+        .player-input button {
+            width: auto;
+            padding: 12px 20px;
+            margin: 0;
+            background: #dc3545;
+        }
+
+        #qrcode-container {
+            text-align: center;
+            margin: 25px 0;
+            padding: 25px;
+            background: linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%);
             border-radius: 15px;
-            font-size: 0.8em;
+            box-shadow: 
+                0 8px 25px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        }
+
+        #qrcode {
             display: inline-block;
-            margin-top: 5px;
+        }
+
+        .share-link {
+            margin-top: 20px;
+            padding: 15px;
+            background: linear-gradient(135deg, rgba(30, 30, 45, 0.9) 0%, rgba(20, 20, 35, 0.8) 100%);
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            border-radius: 12px;
+            word-break: break-all;
+            font-size: 14px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .share-link strong {
+            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .players-list {
+            margin: 20px 0;
+        }
+
+        .player-card {
+            background: linear-gradient(135deg, rgba(30, 30, 45, 0.9) 0%, rgba(20, 20, 35, 0.8) 100%);
+            border-radius: 15px;
+            padding: 18px;
+            margin-bottom: 12px;
+            border: 2px solid rgba(255, 215, 0, 0.2);
+            border-left: 5px solid rgba(100, 100, 150, 0.5);
+            transition: all 0.4s ease;
+            box-shadow: 
+                0 4px 15px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+
+        .player-card.active-turn {
+            border: 2px solid #ffd700;
+            border-left: 5px solid #ffd700;
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.15) 0%, rgba(255, 237, 78, 0.1) 100%);
+            box-shadow: 
+                0 0 30px rgba(255, 215, 0, 0.4),
+                inset 0 0 20px rgba(255, 215, 0, 0.1),
+                0 4px 15px rgba(0, 0, 0, 0.3);
+            animation: pulse 2s infinite;
+            transform: scale(1.02);
+        }
+
+        @keyframes pulse {
+            0%, 100% { 
+                box-shadow: 
+                    0 0 30px rgba(255, 215, 0, 0.4),
+                    inset 0 0 20px rgba(255, 215, 0, 0.1),
+                    0 4px 15px rgba(0, 0, 0, 0.3);
+            }
+            50% { 
+                box-shadow: 
+                    0 0 45px rgba(255, 215, 0, 0.6),
+                    inset 0 0 30px rgba(255, 215, 0, 0.2),
+                    0 6px 20px rgba(0, 0, 0, 0.3);
+            }
+        }
+
+        .player-card.eliminated {
+            opacity: 0.5;
+            border-left-color: #dc3545;
+        }
+
+        .player-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .player-name {
+            font-weight: 700;
+            font-size: 1.15em;
+            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: 0.5px;
+        }
+
+        .player-hp {
+            font-size: 1.6em;
+            font-weight: 800;
+            color: #4ecca3;
+            text-shadow: 0 0 15px rgba(78, 204, 163, 0.6);
+            letter-spacing: 1px;
+        }
+
+        .player-hp.low {
+            color: #ff6b6b;
+            text-shadow: 0 0 15px rgba(255, 107, 107, 0.6);
+            animation: warning-pulse 1.5s infinite;
+        }
+        
+        @keyframes warning-pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
         }
 
         .dice-calculator {
-            background: #f5f5f5;
+            background: linear-gradient(135deg, rgba(30, 30, 45, 0.8) 0%, rgba(20, 20, 35, 0.7) 100%);
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            border-radius: 15px;
             padding: 25px;
-            border-radius: 12px;
-            margin-bottom: 20px;
+            margin: 20px 0;
+            box-shadow: 
+                0 8px 25px rgba(0, 0, 0, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
         }
 
         .dice-inputs {
             display: flex;
-            gap: 15px;
-            margin-bottom: 20px;
+            gap: 10px;
+            margin: 15px 0;
             flex-wrap: wrap;
         }
 
         .dice-input {
             flex: 1;
-            min-width: 100px;
+            min-width: 60px;
         }
 
         .dice-input input {
-            width: 100%;
-            padding: 15px;
-            font-size: 24px;
             text-align: center;
-            border: 3px solid #7B1FA2;
-            border-radius: 8px;
+            font-size: 1.8em;
+            font-weight: 800;
+            background: rgba(10, 10, 20, 0.9);
+            border: 3px solid rgba(255, 215, 0, 0.4);
+            color: #ffd700;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+        
+        .dice-input input:focus {
+            border-color: #ffd700;
+            box-shadow: 
+                inset 0 2px 4px rgba(0, 0, 0, 0.3),
+                0 0 25px rgba(255, 215, 0, 0.5);
         }
 
-        .result-box {
-            background: white;
+        .result-display {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.15) 0%, rgba(255, 237, 78, 0.1) 100%);
+            border: 3px solid #ffd700;
+            border-radius: 15px;
             padding: 20px;
-            border-radius: 8px;
-            margin-top: 20px;
+            margin: 15px 0;
+            text-align: center;
+            box-shadow: 
+                0 0 30px rgba(255, 215, 0, 0.3),
+                inset 0 0 20px rgba(255, 215, 0, 0.1);
         }
 
-        .result-value {
-            font-size: 2em;
-            font-weight: bold;
-            color: #7B1FA2;
+        .result-display h3 {
+            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 12px;
+            font-size: 1.3em;
+            font-weight: 700;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+
+        .history {
+            max-height: 250px;
+            overflow-y: auto;
+            background: rgba(10, 10, 20, 0.8);
+            border: 2px solid rgba(255, 215, 0, 0.2);
+            border-radius: 12px;
+            padding: 15px 15px 15px 25px;
+            margin: 15px 0;
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+        
+        .history::before {
+            content: '';
+            position: absolute;
+            left: 10px;
+            top: 15px;
+            bottom: 15px;
+            width: 2px;
+            background: linear-gradient(180deg, rgba(255, 215, 0, 0.3) 0%, rgba(255, 215, 0, 0.1) 100%);
+        }
+
+        .history-item {
+            padding: 12px 12px 12px 20px;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, rgba(30, 30, 45, 0.6) 0%, rgba(20, 20, 35, 0.5) 100%);
+            border-left: 3px solid rgba(255, 215, 0, 0.4);
+            border-radius: 8px;
+            font-size: 0.9em;
+            transition: all 0.3s ease;
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .history-item::before {
+            content: '';
+            position: absolute;
+            left: -18px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 8px;
+            height: 8px;
+            background: #ffd700;
+            border-radius: 50%;
+            border: 2px solid rgba(10, 10, 20, 0.8);
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+        
+        .history-item .icon {
+            font-size: 1.2em;
+            min-width: 25px;
+            text-align: center;
+        }
+        
+        .history-item.damage {
+            border-left-color: #ff6b6b;
+        }
+        
+        .history-item.damage::before {
+            background: #ff6b6b;
+            box-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
+        }
+        
+        .history-item.heal {
+            border-left-color: #4ecca3;
+        }
+        
+        .history-item.heal::before {
+            background: #4ecca3;
+            box-shadow: 0 0 10px rgba(78, 204, 163, 0.5);
+        }
+        
+        .history-item.special {
+            border-left-color: #ffd700;
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.15) 0%, rgba(255, 237, 78, 0.1) 100%);
+        }
+        
+        .history-item:hover {
+            background: linear-gradient(135deg, rgba(40, 40, 55, 0.7) 0%, rgba(30, 30, 45, 0.6) 100%);
+            border-left-color: #ffd700;
+            transform: translateX(3px);
+        }
+
+        .timer {
+            text-align: center;
+            font-size: 1.3em;
+            font-weight: 700;
+            color: #4ecca3;
+            text-shadow: 0 0 20px rgba(78, 204, 163, 0.6);
+            margin: 10px 0;
+            letter-spacing: 2px;
+        }
+
+        .master-controls {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.08) 0%, rgba(255, 237, 78, 0.05) 100%);
+            border: 2px solid rgba(255, 215, 0, 0.4);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 
+                0 8px 25px rgba(255, 215, 0, 0.15),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+
+        .master-controls h3 {
+            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 18px;
+            text-align: center;
+            font-size: 1.2em;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .control-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .control-group button {
+            padding: 10px;
+            font-size: 14px;
+        }
+
+        .hp-modifier {
+            display: flex;
+            gap: 10px;
             margin: 10px 0;
         }
 
-        .target-highlight {
-            background: #FFD700;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 15px;
-            font-weight: bold;
-            text-align: center;
+        .hp-modifier input {
+            flex: 1;
         }
 
-        .hp-controls {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            margin-top: 15px;
+        .hp-modifier button {
+            width: auto;
+            padding: 10px 15px;
+            margin: 0;
         }
 
-        .hp-btn {
-            padding: 10px;
-            border: none;
-            border-radius: 6px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-size: 13px;
+        .hidden {
+            display: none;
         }
 
-        .hp-btn.damage {
-            background: #F44336;
-            color: white;
-        }
-
-        .hp-btn.heal {
-            background: #4CAF50;
-            color: white;
-        }
-
-        .hp-btn:hover {
-            transform: scale(1.05);
-        }
-
-        .card-panel {
-            background: #f5f5f5;
+        .leaderboard {
+            background: linear-gradient(135deg, rgba(30, 30, 45, 0.8) 0%, rgba(20, 20, 35, 0.7) 100%);
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            border-radius: 15px;
             padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 20px;
+            margin: 15px 0;
+            box-shadow: 
+                0 8px 25px rgba(0, 0, 0, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
         }
 
-        .card-panel h3 {
-            color: #4A148C;
+        .leaderboard h3 {
+            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
             margin-bottom: 15px;
+            text-align: center;
+            font-size: 1.2em;
+            font-weight: 700;
+        }
+
+        .leaderboard-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, rgba(30, 30, 45, 0.6) 0%, rgba(20, 20, 35, 0.5) 100%);
+            border-left: 3px solid rgba(100, 100, 150, 0.5);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .leaderboard-item:hover {
+            background: linear-gradient(135deg, rgba(40, 40, 55, 0.7) 0%, rgba(30, 30, 45, 0.6) 100%);
+            transform: translateX(5px);
+        }
+
+        .leaderboard-item.winner {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 237, 78, 0.15) 100%);
+            border: 3px solid #ffd700;
+            border-left: 5px solid #ffd700;
+            box-shadow: 
+                0 0 25px rgba(255, 215, 0, 0.4),
+                inset 0 0 15px rgba(255, 215, 0, 0.1);
+            font-weight: 700;
+        }
+
+        @keyframes damage {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        @keyframes heal {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .animate-damage {
+            animation: damage 0.5s ease;
+        }
+
+        .animate-heal {
+            animation: heal 0.5s ease;
+        }
+
+        .floating-number {
+            position: fixed;
+            font-size: 2em;
+            font-weight: bold;
+            pointer-events: none;
+            animation: float-up 1s ease-out forwards;
+            z-index: 1000;
+        }
+
+        .floating-number.damage {
+            color: #ff6b6b;
+        }
+
+        .floating-number.heal {
+            color: #4ecca3;
+        }
+
+        @keyframes float-up {
+            0% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-100px); }
         }
 
         .direction-indicator {
-            background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
-            color: white;
-            padding: 12px 20px;
-            border-radius: 10px;
-            font-weight: bold;
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 1.1em;
+            text-align: center;
+            padding: 12px;
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.12) 0%, rgba(255, 237, 78, 0.08) 100%);
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            border-radius: 12px;
+            margin: 10px 0;
+            font-weight: 700;
+            font-size: 1.05em;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 15px rgba(255, 215, 0, 0.1);
         }
 
-        .log-section {
-            background: #f5f5f5;
+        @media (max-width: 480px) {
+            h1 { font-size: 1.5em; }
+            .player-card { padding: 10px; }
+            .dice-inputs { gap: 5px; }
+            .control-group { grid-template-columns: 1fr; }
+            
+            .winner-notification {
+                padding: 40px 30px;
+            }
+            
+            .winner-notification h2 {
+                font-size: 2.2em;
+            }
+        }
+
+        /* Eliminated Notification */
+        .eliminated-notification {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.98) 0%, rgba(50, 0, 0, 0.98) 100%);
+            border: 4px solid #ff0000;
+            border-radius: 20px;
+            padding: 40px 30px;
+            text-align: center;
+            z-index: 2001;
+            box-shadow: 
+                0 0 60px rgba(255, 0, 0, 0.9),
+                inset 0 0 40px rgba(255, 0, 0, 0.3);
+            min-width: 300px;
+            max-width: 90%;
+        }
+
+        .eliminated-notification.show {
+            animation: eliminatedAppear 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+        }
+
+        .eliminated-notification h2 {
+            font-size: 2.5em;
+            color: #ff0000;
+            text-shadow: 0 0 30px rgba(255, 0, 0, 1);
+            margin-bottom: 20px;
+            font-weight: 900;
+        }
+
+        /* Winner Notification */
+        .winner-notification {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.98) 0%, rgba(255, 237, 78, 0.98) 100%);
+            border: 5px solid #ffd700;
+            border-radius: 25px;
+            padding: 50px 40px;
+            text-align: center;
+            z-index: 2001;
+            box-shadow: 
+                0 0 80px rgba(255, 215, 0, 1),
+                inset 0 0 50px rgba(255, 255, 255, 0.3);
+            min-width: 320px;
+            max-width: 90%;
+        }
+
+        .winner-notification.show {
+            animation: winnerAppear 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+        }
+
+        .winner-notification h2 {
+            font-size: 2.8em;
+            color: #1a1a2e;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
+            margin-bottom: 20px;
+            font-weight: 900;
+        }
+
+        .winner-notification .winner-name {
+            font-size: 2.2em;
+            color: #1a1a2e;
+            margin: 20px 0;
+            font-weight: 900;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .game-stats {
+            background: rgba(20, 20, 30, 0.9);
+            border-radius: 15px;
             padding: 20px;
-            border-radius: 12px;
-            max-height: 400px;
+            margin-top: 25px;
+            text-align: left;
+            max-height: 300px;
             overflow-y: auto;
         }
-
-        .log-entry {
-            padding: 10px;
-            background: white;
-            margin-bottom: 10px;
-            border-radius: 6px;
-            border-left: 4px solid #7B1FA2;
-        }
-
-        .log-entry.damage {
-            border-left-color: #F44336;
-        }
-
-        .log-entry.heal {
-            border-left-color: #4CAF50;
-        }
-
-        .log-entry.special {
-            border-left-color: #FF9800;
-        }
-
-        .info-box {
-            background: #E3F2FD;
-            border-left: 4px solid #2196F3;
-            padding: 15px;
-            margin: 20px 0;
-            border-radius: 8px;
-        }
-
-        .loading {
+        
+        .game-stats h3 {
+            color: #ffd700;
             text-align: center;
-            padding: 50px;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+        
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            margin: 8px 0;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            border-left: 3px solid #ffd700;
+        }
+        
+        .stat-item .label {
+            color: #e8e8e8;
+            font-weight: 600;
+        }
+        
+        .stat-item .value {
+            color: #4ecca3;
+            font-weight: 700;
         }
 
-        .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #7B1FA2;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
+        .hit-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 1999;
+            opacity: 0;
+            transition: opacity 0.3s ease;
         }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        .hit-overlay.show {
+            opacity: 1;
+        }
+
+        .hit-overlay.show {
+            opacity: 1;
+        }
+
+        @keyframes eliminatedAppear {
+            0% {
+                transform: translate(-50%, -50%) scale(0) rotate(-180deg);
+                opacity: 0;
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(1) rotate(0deg);
+                opacity: 1;
+            }
+        }
+
+        @keyframes winnerAppear {
+            0% {
+                transform: translate(-50%, -50%) scale(0) rotate(180deg);
+                opacity: 0;
+            }
+            50% {
+                transform: translate(-50%, -50%) scale(1.2) rotate(-10deg);
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(1) rotate(0deg);
+                opacity: 1;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="connection-status disconnected" id="connectionStatus">
-        🔴 Connessione...
-    </div>
-
     <div class="container">
-        <div class="header">
-            <h1>🎲 GIOCO DEL FATO 🎲</h1>
-            <p>Firebase Real-Time Edition</p>
-        </div>
+        <h1>🎲 Gioco del Fato 🎲</h1>
 
-        <!-- MODE SELECTION -->
-        <div class="mode-selection" id="modeSelection">
-            <h2 style="color: #4A148C; margin-bottom: 30px;">Scegli modalità</h2>
-            <div class="mode-buttons">
-                <div class="mode-card" onclick="selectMode('host')">
-                    <div class="mode-icon">👑</div>
-                    <h3>Crea Partita</h3>
-                    <p>Gestisci la partita e genera il QR code per gli altri giocatori.</p>
-                </div>
-                <div class="mode-card" onclick="selectMode('join')">
-                    <div class="mode-icon">📱</div>
-                    <h3>Unisciti</h3>
-                    <p>Inserisci il codice partita per vedere i punteggi in tempo reale.</p>
-                </div>
-            </div>
+        <!-- Setup Screen -->
+        <div id="setup-screen" class="setup-screen">
+            <!-- Auto role detection, no manual selection needed -->
             
-            <div class="info-box" style="max-width: 800px; margin: 30px auto;">
-                <strong>ℹ️ Come funziona:</strong>
-                <ul style="margin-top: 10px; text-align: left; line-height: 1.8;">
-                    <li><strong>Master:</strong> Crea partita, gestisce dadi e danni</li>
-                    <li><strong>Giocatori:</strong> Vedono HP e turni in tempo reale</li>
-                    <li><strong>Sincronizzazione:</strong> Automatica e istantanea</li>
-                </ul>
+            <!-- Master Setup -->
+            <div id="master-setup" class="hidden">
+                <div class="input-group">
+                    <label>Il tuo nome (Master)</label>
+                    <input type="text" id="master-name" placeholder="Inserisci il tuo nome">
+                </div>
+                <div class="input-group">
+                    <label>Numero di giocatori (incluso te)</label>
+                    <input type="number" id="num-players" min="2" max="18" value="4">
+                </div>
+                <div class="input-group">
+                    <label>HP iniziali</label>
+                    <input type="number" id="initial-hp" value="70">
+                </div>
+                <div id="player-names-container"></div>
+                <button id="create-game-btn">Crea Partita</button>
+            </div>
+
+            <!-- Player Join -->
+            <div id="player-join" class="hidden">
+                <div class="input-group">
+                    <label>Seleziona il tuo nome</label>
+                    <select id="player-name-select">
+                        <option value="">Caricamento...</option>
+                    </select>
+                </div>
+                <button id="join-game-btn">Unisciti alla Partita</button>
+                
+                <div style="margin-top: 20px; text-align: center; color: #888; font-size: 0.9em;">
+                    Codice Partita: <strong id="display-game-code" style="color: #ffd700;"></strong>
+                </div>
+            </div>
+
+            <!-- QR Code Display -->
+            <div id="qr-display" class="hidden">
+                <h3 style="color: #ffd700; text-align: center;">Partita Creata!</h3>
+                <div id="qrcode-container">
+                    <div id="qrcode"></div>
+                </div>
+                <div class="share-link">
+                    <strong>Codice Partita:</strong><br>
+                    <span id="game-code-display"></span>
+                </div>
+                <div style="margin-top: 15px; padding: 15px; background: rgba(78, 204, 163, 0.1); border: 2px solid rgba(78, 204, 163, 0.3); border-radius: 10px;">
+                    <div style="color: #4ecca3; font-weight: bold; margin-bottom: 8px;">👥 Giocatori Connessi:</div>
+                    <div id="connected-players-list"></div>
+                </div>
+                <button id="start-game-btn">Inizia Partita</button>
             </div>
         </div>
 
-        <!-- SETUP SECTION -->
-        <div class="setup-section" id="setupSection">
-            <button class="btn btn-secondary btn-small" onclick="backToMode()">← Indietro</button>
-            <h2 style="color: #4A148C; margin: 20px 0;">👑 Configura Partita</h2>
+        <!-- Game Screen -->
+        <div id="game-screen" class="game-screen hidden">
+            <div class="timer" id="timer">Tempo: 00:00</div>
             
-            <div class="input-group">
-                <label>Numero di Giocatori:</label>
-                <select id="numPlayers" onchange="updateHPRecommendation()">
-                    <option value="4">4 giocatori</option>
-                    <option value="5">5 giocatori</option>
-                    <option value="6" selected>6 giocatori</option>
-                    <option value="7">7 giocatori</option>
-                    <option value="8">8 giocatori</option>
-                    <option value="9">9 giocatori</option>
-                    <option value="10">10 giocatori</option>
-                    <option value="11">11 giocatori</option>
-                    <option value="12">12 giocatori</option>
-                    <option value="13">13 giocatori</option>
-                    <option value="14">14 giocatori</option>
-                    <option value="15">15 giocatori</option>
-                    <option value="16">16 giocatori</option>
-                    <option value="17">17 giocatori</option>
-                    <option value="18">18 giocatori</option>
-                </select>
+            <div class="direction-indicator" id="direction">
+                Direzione: ⭮ Oraria
             </div>
 
-            <div class="input-group">
-                <label>Punti Vita Iniziali:</label>
-                <div style="display: flex; gap: 10px; align-items: center;">
-                    <button class="btn btn-small" onclick="useRecommendedHP()">Consigliati</button>
-                    <input type="number" id="startingHP" min="10" max="200" value="70" style="flex: 1;">
-                    <span id="hpRecommendation" style="color: #666; font-size: 0.9em;">Cons: 70</span>
+            <div id="current-turn" style="text-align: center; font-size: 1.2em; color: #ffd700; margin: 15px 0;">
+                Turno di: <strong id="turn-player"></strong>
+            </div>
+
+            <!-- Dice Calculator -->
+            <div class="dice-calculator" id="dice-calculator">
+                <h3 style="color: #ffd700; text-align: center;">Calcolatore Dadi</h3>
+                <div class="dice-inputs" id="dice-inputs"></div>
+                <button id="calculate-btn">Calcola e Applica</button>
+                <div class="result-display hidden" id="result-display">
+                    <h3>Risultato</h3>
+                    <div id="result-text"></div>
                 </div>
             </div>
 
-            <div class="input-group">
-                <label>Nomi Giocatori:</label>
-                <div id="playerInputs"></div>
+            <!-- Players List -->
+            <div class="players-list" id="players-list"></div>
+
+            <!-- Leaderboard -->
+            <div class="leaderboard">
+                <h3>📊 Classifica</h3>
+                <div id="leaderboard-list"></div>
             </div>
 
-            <button class="btn" onclick="createGame()">🚀 Crea Partita</button>
-        </div>
+            <!-- History -->
+            <div class="history" id="history"></div>
 
-        <!-- JOIN SECTION -->
-        <div class="join-section" id="joinSection">
-            <button class="btn btn-secondary btn-small" onclick="backToMode()">← Indietro</button>
-            <h2 style="color: #4A148C; margin: 20px 0;">📱 Unisciti alla Partita</h2>
-            
-            <div class="input-group">
-                <label>Codice Partita:</label>
-                <input type="text" id="joinCode" placeholder="ABC123" style="text-transform: uppercase; font-size: 24px; text-align: center; letter-spacing: 3px;">
-            </div>
-
-            <button class="btn" onclick="joinGame()">🎮 Unisciti</button>
-        </div>
-
-        <!-- GAME SECTION -->
-        <div class="game-section" id="gameSection">
-            <div class="qr-section" id="qrSection" style="display: none;">
-                <h3 style="color: #4A148C;">📱 Condividi Partita</h3>
-                <div class="game-id" id="gameIdDisplay">------</div>
-                <p>Scansiona o condividi questo codice</p>
-                <div class="qr-code" id="qrCodeContainer"></div>
-                <button class="btn btn-secondary btn-small" onclick="copyGameLink()">📋 Copia Link</button>
-            </div>
-
-            <div class="player-role" id="playerRole">👁️ SPETTATORE</div>
-            <div class="game-timer" id="gameTimer" style="display: none;">⏱️ 00:00</div>
-            <div class="winner-badge" id="winnerBadge" style="display: none;">🏆 VINCITORE: Nome</div>
-
-            <div class="game-layout">
-                <div class="main-area">
-                    <!-- DICE CALCULATOR -->
-                    <div class="dice-calculator" id="diceCalculator" style="display: none;">
-                        <h3>🎲 Calcolatore Dadi</h3>
-                        
-                        <div style="margin-bottom: 20px;">
-                            <label style="color: #4A148C; font-weight: bold; margin-bottom: 10px; display: block;">Numero Dadi:</label>
-                            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                                <button class="btn btn-small" onclick="setDiceCount(1)" id="btn-dice-1">1 Dado</button>
-                                <button class="btn btn-small" onclick="setDiceCount(2)" id="btn-dice-2">2 Dadi</button>
-                                <button class="btn btn-small" onclick="setDiceCount(3)" id="btn-dice-3">3 Dadi ✓</button>
-                                <button class="btn btn-small" onclick="setDiceCount(4)" id="btn-dice-4">4 Dadi</button>
-                            </div>
-                        </div>
-                        
-                        <div class="dice-inputs">
-                            <div class="dice-input" id="d1-container">
-                                <input type="number" id="d1" min="1" max="6" placeholder="?" oninput="calculateDamage()">
-                            </div>
-                            <div class="dice-input" id="d2-container">
-                                <input type="number" id="d2" min="1" max="6" placeholder="?" oninput="calculateDamage()">
-                            </div>
-                            <div class="dice-input" id="d3-container">
-                                <input type="number" id="d3" min="1" max="6" placeholder="?" oninput="calculateDamage()">
-                            </div>
-                            <div class="dice-input" id="d4-container" style="display: none;">
-                                <input type="number" id="d4" min="1" max="6" placeholder="?" oninput="calculateDamage()">
-                            </div>
-                        </div>
-                        
-                        <div class="result-box" id="resultBox" style="display: none;">
-                            <h4 id="resultType"></h4>
-                            <div class="result-value" id="damageValue"></div>
-                            <div id="bonusInfo"></div>
-                            <div class="target-highlight" id="targetInfo"></div>
-                            <button class="btn" onclick="applyDamage()">Applica Danno</button>
-                        </div>
-                    </div>
-
-                    <!-- PLAYERS -->
-                    <div class="players-grid" id="playersGrid"></div>
+            <!-- Master Controls -->
+            <div id="master-controls" class="master-controls hidden">
+                <h3>👑 Controlli Master</h3>
+                
+                <div class="control-group">
+                    <button id="reverse-direction-btn">🔄 Inverti Direzione</button>
+                    <button id="rollback-btn">↩️ Annulla Ultima</button>
                 </div>
 
-                <div class="sidebar">
-                    <!-- CONTROLS -->
-                    <div class="card-panel">
-                        <h3>⚙️ Controlli</h3>
-                        <div class="direction-indicator" id="directionIndicator">↻ Orario</div>
-                        <div style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;" id="masterControls" style="display: none;">
-                            <button class="btn btn-small btn-secondary" onclick="toggleDirection()">🔄 Inverti</button>
-                            <button class="btn btn-small" onclick="manualChangeTurn()">🎯 Cambia Turno</button>
-                        </div>
-                    </div>
-
-                    <!-- LOG -->
-                    <div class="log-section">
-                        <h3 style="color: #4A148C; margin-bottom: 15px;">📜 Storico</h3>
-                        <div id="gameLog"></div>
-                    </div>
-
-                    <button class="btn btn-secondary" onclick="endGame()" id="endGameBtn" style="display: none;">🏁 Termina</button>
+                <div class="input-group">
+                    <label>Cambia Turno</label>
+                    <select id="next-turn-player"></select>
+                    <button id="change-turn-btn">⏭️ Cambia Turno</button>
                 </div>
+
+                <div class="input-group">
+                    <label>Numero di Dadi</label>
+                    <input type="number" id="dice-count" min="1" max="4" value="3">
+                    <button id="update-dice-btn">Aggiorna Dadi</button>
+                </div>
+
+                <div class="input-group">
+                    <label>Modifica HP Giocatori (tieni premuto Ctrl/Cmd per selezionare multipli)</label>
+                    <select id="target-players" multiple size="5"></select>
+                    <div class="hp-modifier">
+                        <input type="number" id="hp-amount" placeholder="Valore HP" style="font-size: 18px; padding: 16px;">
+                        <button id="damage-btn">💥 Danno</button>
+                        <button id="heal-btn">💚 Cura</button>
+                    </div>
+                </div>
+
+                <button id="revive-btn">🔄 Rianimazione</button>
+                
+                <div class="input-group" style="margin-top: 15px;">
+                    <label>Scambia HP tra Giocatori</label>
+                    <select id="swap-player-1"></select>
+                    <select id="swap-player-2" style="margin-top: 10px;"></select>
+                    <button id="swap-hp-btn">🔄 Scambia HP</button>
+                </div>
+                
+                <button id="end-game-btn" style="background: #dc3545;">🏁 Termina Partita</button>
+                <button id="new-game-btn" style="background: linear-gradient(135deg, #4ecca3 0%, #3ab795 100%);">🎮 Nuova Partita</button>
             </div>
         </div>
     </div>
-
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
-    
-    <!-- QR Code Library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
     <script>
-        // Wait for Firebase to load
-        window.addEventListener('load', function() {
-            initializeApp();
-        });
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBM8I3r7kVhQGYoYKtxDCOxjqUdGPBKGzk",
+            authDomain: "gioco-del-fato.firebaseapp.com",
+            databaseURL: "https://gioco-del-fato-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "gioco-del-fato",
+            storageBucket: "gioco-del-fato.firebasestorage.app",
+            messagingSenderId: "642126871917",
+            appId: "1:642126871917:web:a4d6c5e8f9b0c1d2e3f4g5"
+        };
 
-        function initializeApp() {
-            // ================================
-            // CONFIGURAZIONE FIREBASE
-            // ================================
-            // IMPORTANTE: Sostituisci SOLO i valori tra virgolette con i tuoi dati!
-            const firebaseConfig = {
-  apiKey: "AIzaSyAv1tYe2jwc3abq128Ci5PvJK1HTTuF3tY",
-  authDomain: "gioco-del-fato.firebaseapp.com",
-  databaseURL: "https://gioco-del-fato-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "gioco-del-fato",
-  storageBucket: "gioco-del-fato.firebasestorage.app",
-  messagingSenderId: "358068623557",
-  appId: "1:358068623557:web:dad9bbba9da419e186f8ac"
-            };
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
 
-            // Check if Firebase is loaded
-            if (typeof firebase === 'undefined') {
-                console.error('Firebase non caricato!');
-                alert('ERRORE: Firebase non caricato. Controlla la connessione internet.');
-                updateConnectionStatus(false);
+        let gameState = {
+            gameCode: null,
+            isMaster: false,
+            playerName: null,
+            currentTurn: 0,
+            direction: 'clockwise',
+            diceCount: 3,
+            players: [],
+            history: [],
+            startTime: null,
+            initialHP: 70,
+            stats: {}, // Track game statistics
+            previousState: null // For rollback
+        };
+
+        let timerInterval = null;
+
+        // Setup Event Listeners
+        document.getElementById('num-players').addEventListener('change', generatePlayerNameInputs);
+
+        document.getElementById('create-game-btn').addEventListener('click', createGame);
+        document.getElementById('join-game-btn').addEventListener('click', joinGame);
+        document.getElementById('start-game-btn').addEventListener('click', startGame);
+        document.getElementById('calculate-btn').addEventListener('click', calculateDice);
+        
+        // Master Controls
+        document.getElementById('reverse-direction-btn')?.addEventListener('click', reverseDirection);
+        document.getElementById('rollback-btn')?.addEventListener('click', rollbackLastTurn);
+        document.getElementById('change-turn-btn')?.addEventListener('click', changeTurn);
+        document.getElementById('update-dice-btn')?.addEventListener('click', updateDiceCount);
+        document.getElementById('damage-btn')?.addEventListener('click', () => modifyHP('damage'));
+        document.getElementById('heal-btn')?.addEventListener('click', () => modifyHP('heal'));
+        document.getElementById('revive-btn')?.addEventListener('click', revivePlayer);
+        document.getElementById('swap-hp-btn')?.addEventListener('click', swapHP);
+        document.getElementById('end-game-btn')?.addEventListener('click', endGame);
+        document.getElementById('new-game-btn')?.addEventListener('click', newGame);
+
+        // Auto-detect role from URL parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const gameCode = urlParams.get('game');
+        
+        if (gameCode) {
+            // Player joining via QR code
+            document.getElementById('player-join').classList.remove('hidden');
+            document.getElementById('display-game-code').textContent = gameCode;
+            loadAvailablePlayers(gameCode);
+        } else {
+            // Master creating new game
+            document.getElementById('master-setup').classList.remove('hidden');
+            generatePlayerNameInputs();
+        }
+
+        function loadAvailablePlayers(code) {
+            database.ref('games/' + code).on('value', (snapshot) => {
+                if (!snapshot.exists()) {
+                    return;
+                }
+
+                const gameData = snapshot.val();
+                const select = document.getElementById('player-name-select');
+                
+                if (!select) return;
+                
+                select.innerHTML = '<option value="">Seleziona il tuo nome...</option>';
+                
+                gameData.players.forEach((player) => {
+                    const option = document.createElement('option');
+                    option.value = player.name;
+                    option.textContent = player.name + (player.connected ? ' ✓' : '');
+                    option.disabled = player.connected;
+                    select.appendChild(option);
+                });
+                
+                // Update connected players list for master
+                const connectedList = document.getElementById('connected-players-list');
+                if (connectedList) {
+                    connectedList.innerHTML = gameData.players
+                        .map(p => `<div style="color: ${p.connected ? '#4ecca3' : '#888'}; padding: 5px;">
+                            ${p.connected ? '✓' : '○'} ${p.name}
+                        </div>`)
+                        .join('');
+                }
+            });
+        }
+
+        function generatePlayerNameInputs() {
+            const numPlayers = parseInt(document.getElementById('num-players').value);
+            const container = document.getElementById('player-names-container');
+            container.innerHTML = '<div class="input-group"><label>Nomi degli altri giocatori:</label></div>';
+            
+            for (let i = 1; i < numPlayers; i++) {
+                const div = document.createElement('div');
+                div.className = 'player-input';
+                div.innerHTML = `
+                    <input type="text" placeholder="Giocatore ${i + 1}" id="player-${i}">
+                `;
+                container.appendChild(div);
+            }
+
+            // Auto-suggest HP
+            const hpInput = document.getElementById('initial-hp');
+            if (numPlayers >= 7) {
+                hpInput.value = 80;
+            } else {
+                hpInput.value = 70;
+            }
+        }
+
+        function createGame() {
+            const masterName = document.getElementById('master-name').value.trim();
+            const numPlayers = parseInt(document.getElementById('num-players').value);
+            const initialHP = parseInt(document.getElementById('initial-hp').value);
+
+            if (!masterName) {
+                alert('Inserisci il tuo nome!');
                 return;
             }
 
-            // Inizializza Firebase
-            try {
-                console.log("Inizializzazione Firebase...");
-                app = firebase.initializeApp(firebaseConfig);
-                database = firebase.database();
-                
-                // Test connessione
-                database.ref('.info/connected').on('value', (snapshot) => {
-                    if (snapshot.val() === true) {
-                        console.log("✅ Connesso a Firebase!");
-                        updateConnectionStatus(true);
-                    } else {
-                        console.log("❌ Disconnesso da Firebase");
-                        updateConnectionStatus(false);
-                    }
-                });
-                
-            } catch (error) {
-                console.error("Errore Firebase:", error);
-                alert("ERRORE Firebase: " + error.message);
-                updateConnectionStatus(false);
-            }
-        }
-
-        // ================================
-        // VARIABILI GLOBALI
-        // ================================
-        let app, database, gameRef;
-        let currentGameId = null;
-        let isHost = false;
-        let gameData = null;
-        let activeDiceCount = 3;
-        let calculatedDamage = 0;
-        let targetPlayer = null;
-        let isPair = false;
-        let isTris = false;
-        let timerInterval = null;
-
-        const HP_VALUES = {
-            4: 60, 5: 70, 6: 70, 7: 75, 8: 75, 9: 80, 10: 80, 11: 80, 12: 80,
-            13: 85, 14: 85, 15: 85, 16: 90, 17: 90, 18: 90
-        };
-
-        // ================================
-        // UTILITY FUNCTIONS
-        // ================================
-        function generateGameId() {
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-            let id = '';
-            for (let i = 0; i < 6; i++) {
-                id += chars.charAt(Math.floor(Math.random() * chars.length));
-            }
-            return id;
-        }
-
-        function updateConnectionStatus(connected) {
-            const el = document.getElementById('connectionStatus');
-            el.className = connected ? 'connection-status connected' : 'connection-status disconnected';
-            el.textContent = connected ? '🟢 Connesso' : '🔴 Offline';
-        }
-
-        // ================================
-        // MODE SELECTION
-        // ================================
-        function selectMode(mode) {
-            document.getElementById('modeSelection').style.display = 'none';
+            const players = [{ name: masterName, hp: initialHP, isEliminated: false, isMaster: true, connected: true }];
             
-            if (mode === 'host') {
-                isHost = true;
-                document.getElementById('setupSection').style.display = 'block';
-                generatePlayerInputs();
-            } else {
-                isHost = false;
-                document.getElementById('joinSection').style.display = 'block';
+            for (let i = 1; i < numPlayers; i++) {
+                const playerName = document.getElementById(`player-${i}`).value.trim();
+                if (playerName) {
+                    players.push({ name: playerName, hp: initialHP, isEliminated: false, isMaster: false, connected: false });
+                }
             }
+
+            if (players.length < 2) {
+                alert('Servono almeno 2 giocatori!');
+                return;
+            }
+
+            const code = generateGameCode();
+            gameState.gameCode = code;
+            gameState.isMaster = true;
+            gameState.playerName = masterName;
+
+            const gameData = {
+                players: players,
+                currentTurn: 0,
+                direction: 'clockwise',
+                diceCount: 3,
+                history: [],
+                startTime: null,
+                started: false,
+                initialHP: initialHP
+            };
+
+            database.ref('games/' + code).set(gameData).then(() => {
+                showQRCode(code);
+            });
         }
 
-        function backToMode() {
-            document.getElementById('modeSelection').style.display = 'block';
-            document.getElementById('setupSection').style.display = 'none';
-            document.getElementById('joinSection').style.display = 'none';
-            document.getElementById('gameSection').style.display = 'none';
+        function generateGameCode() {
+            return Math.random().toString(36).substring(2, 8).toUpperCase();
         }
 
-        // ================================
-        // SETUP
-        // ================================
-        function generatePlayerInputs() {
-            const num = parseInt(document.getElementById('numPlayers').value);
-            const container = document.getElementById('playerInputs');
-            container.innerHTML = '';
+        function showQRCode(code) {
+            document.getElementById('master-setup').classList.add('hidden');
+            document.getElementById('qr-display').classList.remove('hidden');
+            document.getElementById('game-code-display').textContent = code;
+
+            const url = window.location.origin + window.location.pathname + '?game=' + code;
             
-            for (let i = 0; i < num; i++) {
-                const input = document.createElement('input');
-                input.type = 'text';
-                input.id = `player${i}`;
-                input.placeholder = `Giocatore ${i + 1}`;
-                input.value = `Giocatore ${i + 1}`;
-                input.style.marginBottom = '10px';
-                container.appendChild(input);
+            new QRCode(document.getElementById('qrcode'), {
+                text: url,
+                width: 200,
+                height: 200,
+                colorDark: "#000000",
+                colorLight: "#ffffff"
+            });
+
+            listenToGameChanges(code);
+        }
+
+        function joinGame() {
+            const playerName = document.getElementById('player-name-select').value;
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('game');
+
+            if (!playerName || !code) {
+                alert('Seleziona il tuo nome!');
+                return;
             }
-            
-            updateHPRecommendation();
-        }
 
-        function updateHPRecommendation() {
-            const num = parseInt(document.getElementById('numPlayers').value);
-            const hp = HP_VALUES[num];
-            document.getElementById('hpRecommendation').textContent = `Cons: ${hp}`;
-            document.getElementById('startingHP').value = hp;
-        }
-
-        function useRecommendedHP() {
-            updateHPRecommendation();
-        }
-
-        // ================================
-        // CREATE GAME
-        // ================================
-        async function createGame() {
-            try {
-                const num = parseInt(document.getElementById('numPlayers').value);
-                const startingHP = parseInt(document.getElementById('startingHP').value);
-                
-                if (startingHP < 10 || startingHP > 200) {
-                    alert('HP deve essere 10-200!');
-                    return;
-                }
-                
-                const players = [];
-                for (let i = 0; i < num; i++) {
-                    const nameInput = document.getElementById(`player${i}`);
-                    const name = nameInput ? nameInput.value : `Giocatore ${i + 1}`;
-                    players.push({
-                        id: i,
-                        name: name || `Giocatore ${i + 1}`,
-                        hp: startingHP,
-                        maxHp: startingHP,
-                        eliminated: false,
-                        skipTurn: false
-                    });
-                }
-                
-                currentGameId = generateGameId();
-                gameData = {
-                    id: currentGameId,
-                    players: players,
-                    currentTurn: 0,
-                    clockwise: true,
-                    activeDiceCount: 3,
-                    log: [],
-                    createdAt: Date.now()
-                };
-                
-                console.log('Creating game with ID:', currentGameId);
-                console.log('Game data:', gameData);
-                
-                gameRef = database.ref('games/' + currentGameId);
-                await gameRef.set(gameData);
-                
-                console.log('Game created successfully');
-                
-                // Listen for changes
-                gameRef.on('value', (snapshot) => {
-                    const data = snapshot.val();
-                    if (data) {
-                        gameData = data;
-                        renderGame();
-                    }
-                });
-                
-                showGameScreen();
-                generateQRCode();
-                addLog('🎮 Partita creata!');
-                
-                console.log('Game setup complete');
-            } catch (error) {
-                console.error('Error creating game:', error);
-                alert('Errore creazione partita: ' + error.message);
-            }
-        }
-
-        // ================================
-        // JOIN GAME
-        // ================================
-        async function joinGame() {
-            try {
-                const code = document.getElementById('joinCode').value.toUpperCase().trim();
-                
-                if (code.length !== 6) {
-                    alert('Codice deve essere 6 caratteri!');
-                    return;
-                }
-                
-                console.log('Joining game:', code);
-                
-                currentGameId = code;
-                gameRef = database.ref('games/' + currentGameId);
-                
-                const snapshot = await gameRef.once('value');
-                
+            database.ref('games/' + code).once('value').then((snapshot) => {
                 if (!snapshot.exists()) {
                     alert('Partita non trovata!');
                     return;
                 }
+
+                const gameData = snapshot.val();
                 
-                gameData = snapshot.val();
-                
-                // Ensure log exists
-                if (!gameData.log) {
-                    gameData.log = [];
+                // Check if name is already taken by another connected player
+                const playerAlreadyJoined = gameData.players.find(p => p.name === playerName && p.connected);
+                if (playerAlreadyJoined) {
+                    alert('Questo nome è già stato preso da un altro giocatore!');
+                    return;
                 }
+
+                // Mark player as connected
+                const playerIndex = gameData.players.findIndex(p => p.name === playerName);
+                if (playerIndex >= 0) {
+                    gameData.players[playerIndex].connected = true;
+                    database.ref('games/' + code + '/players/' + playerIndex).update({ connected: true });
+                }
+
+                gameState.gameCode = code;
+                gameState.isMaster = false;
+                gameState.playerName = playerName;
+
+                listenToGameChanges(code);
                 
-                console.log('Joined game successfully');
-                
-                // Listen for changes
-                gameRef.on('value', (snapshot) => {
-                    if (snapshot.exists()) {
-                        const data = snapshot.val();
-                        if (data) {
-                            gameData = data;
-                            if (!gameData.log) gameData.log = [];
-                            renderGame();
-                        }
-                    }
-                });
-                
-                showGameScreen();
-            } catch (error) {
-                console.error('Error joining game:', error);
-                alert('Errore: ' + error.message);
-            }
+                if (gameData.started) {
+                    showGameScreen();
+                } else {
+                    // Show waiting screen
+                    document.getElementById('setup-screen').innerHTML = `
+                        <div style="text-align: center; padding: 40px;">
+                            <h2 style="color: #ffd700; margin-bottom: 20px;">✅ Connesso come ${playerName}!</h2>
+                            <p style="font-size: 1.2em; margin-bottom: 30px;">In attesa che il Master avvii la partita...</p>
+                            <div style="font-size: 3em; animation: pulse 2s infinite;">⏳</div>
+                        </div>
+                    `;
+                }
+            });
+        }
+
+        function startGame() {
+            if (!gameState.gameCode) return;
+
+            const startTime = Date.now();
+            database.ref('games/' + gameState.gameCode).update({
+                started: true,
+                startTime: startTime
+            });
+
+            showGameScreen();
         }
 
         function showGameScreen() {
-            document.getElementById('setupSection').style.display = 'none';
-            document.getElementById('joinSection').style.display = 'none';
-            document.getElementById('gameSection').style.display = 'block';
-            
-            if (isHost) {
-                document.getElementById('qrSection').style.display = 'block';
-                document.getElementById('diceCalculator').style.display = 'block';
-                document.getElementById('masterControls').style.display = 'flex';
-                document.getElementById('endGameBtn').style.display = 'block';
-                document.getElementById('playerRole').textContent = '👑 MASTER';
-                document.getElementById('playerRole').className = 'player-role';
-                document.getElementById('gameIdDisplay').textContent = currentGameId;
-                document.getElementById('gameTimer').style.display = 'none';
-            } else {
-                document.getElementById('qrSection').style.display = 'none';
-                document.getElementById('diceCalculator').style.display = 'none';
-                document.getElementById('masterControls').style.display = 'none';
-                document.getElementById('endGameBtn').style.display = 'none';
-                document.getElementById('playerRole').textContent = '👁️ SPETTATORE';
-                document.getElementById('playerRole').className = 'player-role spectator-role';
-                document.getElementById('gameTimer').style.display = 'inline-block';
-                startGameTimer();
+            document.getElementById('setup-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+
+            if (gameState.isMaster) {
+                document.getElementById('master-controls').classList.remove('hidden');
             }
-            
-            renderGame();
+
+            renderDiceInputs();
         }
 
-        function startGameTimer() {
-            if (timerInterval) clearInterval(timerInterval);
-            
-            timerInterval = setInterval(() => {
-                if (!gameData || !gameData.createdAt) return;
-                
-                const elapsed = Date.now() - gameData.createdAt;
-                const seconds = Math.floor(elapsed / 1000);
-                const minutes = Math.floor(seconds / 60);
-                const hours = Math.floor(minutes / 60);
-                
-                const displayMinutes = minutes % 60;
-                const displaySeconds = seconds % 60;
-                
-                let timeString = '';
-                if (hours > 0) {
-                    timeString = `${hours}:${String(displayMinutes).padStart(2, '0')}:${String(displaySeconds).padStart(2, '0')}`;
-                } else {
-                    timeString = `${String(displayMinutes).padStart(2, '0')}:${String(displaySeconds).padStart(2, '0')}`;
+        function listenToGameChanges(code) {
+            database.ref('games/' + code).on('value', (snapshot) => {
+                if (!snapshot.exists()) return;
+
+                const data = snapshot.val();
+                gameState.players = data.players || [];
+                gameState.currentTurn = data.currentTurn || 0;
+                gameState.direction = data.direction || 'clockwise';
+                gameState.diceCount = data.diceCount || 3;
+                gameState.history = data.history || [];
+                gameState.startTime = data.startTime;
+                gameState.initialHP = data.initialHP || 70;
+                gameState.stats = data.stats || {};
+
+                if (data.started && document.getElementById('setup-screen').classList.contains('hidden') === false) {
+                    showGameScreen();
                 }
                 
-                document.getElementById('gameTimer').textContent = `⏱️ ${timeString}`;
-            }, 1000);
-        }
+                // Show winner notification when game ends
+                if (data.gameEnded && data.winner) {
+                    const isYou = data.winner === gameState.playerName;
+                    showWinnerNotification(data.winner, isYou);
+                }
 
-        // ================================
-        // QR CODE
-        // ================================
-        function generateQRCode() {
-            const container = document.getElementById('qrCodeContainer');
-            container.innerHTML = '';
-            const url = window.location.origin + window.location.pathname + '?game=' + currentGameId;
-            new QRCode(container, {
-                text: url,
-                width: 200,
-                height: 200
+                renderPlayers();
+                renderLeaderboard();
+                renderHistory();
+                updateTurnDisplay();
+                updateDirectionDisplay();
+                renderDiceInputs();
+                updateMasterControls();
+
+                if (gameState.startTime && !timerInterval) {
+                    startTimer();
+                }
             });
         }
 
-        function copyGameLink() {
-            const url = window.location.origin + window.location.pathname + '?game=' + currentGameId;
-            navigator.clipboard.writeText(url);
-            alert('Link copiato!');
-        }
+        function renderPlayers() {
+            const container = document.getElementById('players-list');
+            container.innerHTML = '';
 
-        // ================================
-        // RENDER GAME
-        // ================================
-        function renderGame() {
-            if (!gameData) return;
-            
-            // Initialize log if missing
-            if (!gameData.log) {
-                gameData.log = [];
-            }
-            
-            // Show winner badge if there's a winner
-            const winnerBadge = document.getElementById('winnerBadge');
-            if (gameData.winner && !isHost) {
-                winnerBadge.textContent = `🏆 VINCITORE: ${gameData.winner}`;
-                winnerBadge.style.display = 'inline-block';
-            } else {
-                winnerBadge.style.display = 'none';
-            }
-            
-            const grid = document.getElementById('playersGrid');
-            grid.innerHTML = '';
-            
-            // Keep original order for both host and spectators
-            let playersToRender = [...gameData.players];
-            
-            playersToRender.forEach((player, displayIndex) => {
+            gameState.players.forEach((player, index) => {
                 const card = document.createElement('div');
-                let cls = 'player-card';
+                card.className = 'player-card';
+                card.id = `player-card-${index}`;
                 
-                // Check if this player has the current turn (use original index)
-                if (player.id === gameData.currentTurn && !player.eliminated) {
-                    cls += ' active';
-                }
-                if (player.eliminated) {
-                    cls += ' eliminated';
+                if (index === gameState.currentTurn && !player.isEliminated) {
+                    card.classList.add('active-turn');
                 }
                 
-                card.className = cls;
-                
-                const hpCls = player.hp <= player.maxHp * 0.2 && !player.eliminated ? 'low' : '';
-                
-                // Build last action display
-                let lastActionHtml = '';
-                if (!isHost && player.lastAction) {
-                    const action = player.lastAction;
-                    const timeSince = Math.floor((Date.now() - action.timestamp) / 1000);
-                    const timeText = timeSince < 60 ? 'ora' : `${Math.floor(timeSince / 60)}m fa`;
-                    
-                    // Check if it's healing or damage
-                    const isHealing = action.type === 'TRIS';
-                    const cardIcon = (action.type === 'COPPIA' || action.type === 'TRIS') ? ' 🃏' : '';
-                    
-                    lastActionHtml = `
-                        <div style="background: rgba(123, 31, 162, 0.1); padding: 10px; border-radius: 8px; margin-top: 10px; font-size: 0.85em;">
-                            <div style="color: #7B1FA2; font-weight: bold; margin-bottom: 5px;">
-                                🎲 ${action.type}${cardIcon}
-                            </div>
-                            <div style="color: #666;">
-                                Dadi: ${action.dice}
-                            </div>
-                            <div style="color: #F44336; font-weight: bold; margin-top: 5px;">
-                                💥 ${action.damage} danni → ${action.target}
-                            </div>
-                            ${isHealing ? `
-                                <div style="color: #4CAF50; font-weight: bold; margin-top: 3px;">
-                                    💚 +${action.damage} HP
-                                </div>
-                            ` : ''}
-                            <div style="color: #999; font-size: 0.9em; margin-top: 3px;">
-                                ${timeText}
-                            </div>
-                        </div>
-                    `;
+                if (player.isEliminated) {
+                    card.classList.add('eliminated');
                 }
+
+                const hpClass = player.hp < 30 ? 'low' : '';
                 
                 card.innerHTML = `
-                    ${player.id === gameData.currentTurn && !player.eliminated ? '<div class="turn-indicator">🎯 TURNO</div>' : ''}
-                    <div class="player-name">${player.name}</div>
-                    <div class="player-hp ${hpCls}">${player.hp} HP</div>
-                    <div style="color: #666; font-size: 0.9em;">Max: ${player.maxHp}</div>
-                    ${player.eliminated ? '<div class="eliminated-badge">☠️ ELIMINATO</div>' : ''}
-                    ${lastActionHtml}
-                    ${isHost && !player.eliminated ? `
-                        <div class="hp-controls">
-                            <button class="hp-btn damage" onclick="quickDamage(${player.id})">💥</button>
-                            <button class="hp-btn heal" onclick="quickHeal(${player.id})">❤️</button>
-                        </div>
-                    ` : ''}
-                    ${isHost && player.eliminated ? `
-                        <button class="hp-btn heal" onclick="quickHeal(${player.id})" style="grid-column: span 2;">👻 Rianima</button>
-                    ` : ''}
+                    <div class="player-info">
+                        <div class="player-name">${player.name}${player.isMaster ? ' 👑' : ''}</div>
+                        <div class="player-hp ${hpClass}">${player.hp} HP</div>
+                    </div>
+                    ${player.isEliminated ? '<div style="color: #dc3545; margin-top: 5px;">☠️ Eliminato</div>' : ''}
                 `;
                 
-                grid.appendChild(card);
+                container.appendChild(card);
             });
+        }
+
+        function renderLeaderboard() {
+            const container = document.getElementById('leaderboard-list');
+            const sorted = [...gameState.players].sort((a, b) => b.hp - a.hp);
             
-            document.getElementById('directionIndicator').textContent = gameData.clockwise ? '↻ Orario' : '↺ Antiorario';
+            container.innerHTML = '';
+            sorted.forEach((player, index) => {
+                const item = document.createElement('div');
+                item.className = 'leaderboard-item';
+                if (index === 0) item.classList.add('winner');
+                
+                item.innerHTML = `
+                    <span>${index + 1}. ${player.name}</span>
+                    <span>${player.hp} HP</span>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function renderHistory() {
+            const container = document.getElementById('history');
+            container.innerHTML = '';
             
-            const logEl = document.getElementById('gameLog');
-            if (gameData.log && gameData.log.length > 0) {
-                logEl.innerHTML = gameData.log.slice(0, 50).reverse().map(entry => `
-                    <div class="log-entry ${entry.type || ''}">
-                        <strong>${entry.time}</strong> - ${entry.message}
-                    </div>
-                `).join('');
-            } else {
-                logEl.innerHTML = '<div style="color: #999; text-align: center; padding: 20px;">Nessuna azione ancora</div>';
+            const recent = gameState.history.slice(-20).reverse();
+            recent.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'history-item';
+                
+                // Determine icon and class based on content
+                let icon = '🎲';
+                let itemClass = '';
+                
+                if (item.includes('riceve') && item.includes('danni')) {
+                    icon = '💥';
+                    itemClass = 'damage';
+                } else if (item.includes('si cura') || item.includes('recupera')) {
+                    icon = '💚';
+                    itemClass = 'heal';
+                } else if (item.includes('Coppia') || item.includes('Tris') || item.includes('POKER')) {
+                    icon = '✨';
+                    itemClass = 'special';
+                } else if (item.includes('rianimato')) {
+                    icon = '🔄';
+                    itemClass = 'heal';
+                } else if (item.includes('scambiato')) {
+                    icon = '🔄';
+                    itemClass = 'special';
+                } else if (item.includes('Nuova partita') || item.includes('terminata')) {
+                    icon = '🏁';
+                    itemClass = 'special';
+                } else if (item.includes('Direzione')) {
+                    icon = '⭮';
+                    itemClass = 'special';
+                }
+                
+                div.className += ' ' + itemClass;
+                div.innerHTML = `<span class="icon">${icon}</span><span>${item}</span>`;
+                container.appendChild(div);
+            });
+        }
+
+        function updateTurnDisplay() {
+            const currentPlayer = gameState.players[gameState.currentTurn];
+            if (currentPlayer) {
+                document.getElementById('turn-player').textContent = currentPlayer.name;
+                
+                // Visual turn indicator - green pulsing border
+                if (currentPlayer.name === gameState.playerName) {
+                    document.body.classList.add('my-turn');
+                } else {
+                    document.body.classList.remove('my-turn');
+                }
             }
         }
 
-        // ================================
-        // DICE CALCULATOR
-        // ================================
-        function setDiceCount(count) {
-            activeDiceCount = count;
-            
-            for (let i = 1; i <= 4; i++) {
-                const btn = document.getElementById(`btn-dice-${i}`);
-                if (i === count) {
-                    btn.style.background = 'linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%)';
-                    btn.textContent = btn.textContent.replace(' ✓', '') + ' ✓';
-                } else {
-                    btn.style.background = 'linear-gradient(135deg, #7B1FA2 0%, #9C27B0 100%)';
-                    btn.textContent = btn.textContent.replace(' ✓', '');
-                }
-            }
-            
-            for (let i = 1; i <= 4; i++) {
-                const container = document.getElementById(`d${i}-container`);
-                const input = document.getElementById(`d${i}`);
-                if (i <= count) {
-                    container.style.display = 'block';
-                } else {
-                    container.style.display = 'none';
-                    input.value = '';
-                }
-            }
-            
-            calculateDamage();
+        function updateDirectionDisplay() {
+            const arrow = gameState.direction === 'clockwise' ? '⭮' : '⭯';
+            const text = gameState.direction === 'clockwise' ? 'Oraria' : 'Antioraria';
+            document.getElementById('direction').innerHTML = `Direzione: ${arrow} ${text}`;
         }
 
-        function calculateDamage() {
+        function renderDiceInputs() {
+            const container = document.getElementById('dice-inputs');
+            container.innerHTML = '';
+            
+            for (let i = 0; i < gameState.diceCount; i++) {
+                const div = document.createElement('div');
+                div.className = 'dice-input';
+                div.innerHTML = `<input type="number" min="1" max="6" id="dice-${i}" placeholder="D${i + 1}">`;
+                container.appendChild(div);
+            }
+        }
+
+        function updateMasterControls() {
+            if (!gameState.isMaster) return;
+
+            // Update turn change selector
+            const turnSelect = document.getElementById('next-turn-player');
+            turnSelect.innerHTML = '';
+            
+            gameState.players.forEach((player, index) => {
+                if (!player.isEliminated) {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = player.name;
+                    turnSelect.appendChild(option);
+                }
+            });
+
+            // Update multi-select for HP modification
+            const multiSelect = document.getElementById('target-players');
+            multiSelect.innerHTML = '';
+            
+            gameState.players.forEach((player, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = player.name + (player.isEliminated ? ' (Eliminato)' : '');
+                multiSelect.appendChild(option);
+            });
+
+            // Update swap HP selects
+            const swapSelect1 = document.getElementById('swap-player-1');
+            const swapSelect2 = document.getElementById('swap-player-2');
+            
+            if (swapSelect1 && swapSelect2) {
+                swapSelect1.innerHTML = '';
+                swapSelect2.innerHTML = '';
+                
+                gameState.players.forEach((player, index) => {
+                    const option1 = document.createElement('option');
+                    option1.value = index;
+                    option1.textContent = player.name;
+                    swapSelect1.appendChild(option1);
+                    
+                    const option2 = document.createElement('option');
+                    option2.value = index;
+                    option2.textContent = player.name;
+                    swapSelect2.appendChild(option2);
+                });
+            }
+
+            document.getElementById('dice-count').value = gameState.diceCount;
+        }
+
+        function calculateDice() {
+            const currentPlayerIndex = gameState.currentTurn;
+            const currentPlayer = gameState.players[currentPlayerIndex];
+
+            if (!gameState.isMaster && currentPlayer.name !== gameState.playerName) {
+                alert('Non è il tuo turno!');
+                return;
+            }
+
+            if (currentPlayer.isEliminated) {
+                alert('Il giocatore corrente è eliminato!');
+                return;
+            }
+
             const diceValues = [];
-            for (let i = 1; i <= activeDiceCount; i++) {
-                const val = parseInt(document.getElementById(`d${i}`).value);
-                if (!val || val < 1 || val > 6) {
-                    document.getElementById('resultBox').style.display = 'none';
+            for (let i = 0; i < gameState.diceCount; i++) {
+                const value = parseInt(document.getElementById(`dice-${i}`).value);
+                if (!value || value < 1 || value > 6) {
+                    alert('Inserisci valori validi per tutti i dadi (1-6)!');
                     return;
                 }
-                diceValues.push(val);
+                diceValues.push(value);
+            }
+
+            const result = processDiceRoll(diceValues, currentPlayerIndex);
+            displayResult(result);
+            applyResult(result);
+        }
+
+        function processDiceRoll(dice, shooterIndex) {
+            const sum = dice.reduce((a, b) => a + b, 0);
+            const counts = {};
+            dice.forEach(d => counts[d] = (counts[d] || 0) + 1);
+            
+            const maxCount = Math.max(...Object.values(counts));
+            const pairValue = maxCount >= 2 ? parseInt(Object.keys(counts).find(k => counts[k] === maxCount)) : null;
+
+            let damage = sum;
+            let specialEffect = null;
+            let selfHeal = 0;
+            let cardsDrawn = 0;
+            let isPoker = false;
+
+            // POKER - 4 dadi uguali = VITTORIA ISTANTANEA
+            if (maxCount === 4) {
+                isPoker = true;
+                specialEffect = 'POKER - VITTORIA!';
+                damage = 0; // No damage, instant win
+            } else if (maxCount === 3) {
+                // Tris: (valore × valore) + valore del terzo dado
+                const trisDice = dice.filter(d => d === pairValue);
+                damage = (pairValue * pairValue) + trisDice[2];
+                selfHeal = damage;
+                cardsDrawn = 2;
+                specialEffect = 'Tris';
+            } else if (maxCount === 2) {
+                // Coppia: (valore × valore) + altro dado
+                const otherDice = dice.find(d => d !== pairValue);
+                damage = (pairValue * pairValue) + (otherDice || 0);
+                cardsDrawn = 1;
+                specialEffect = 'Coppia';
+            }
+
+            const targetIndex = !isPoker ? findTarget(sum, shooterIndex) : -1;
+
+            return {
+                dice,
+                sum,
+                damage,
+                specialEffect,
+                selfHeal,
+                cardsDrawn,
+                shooterIndex,
+                targetIndex,
+                isPoker
+            };
+        }
+
+        function findTarget(sum, shooterIndex) {
+            const activePlayers = gameState.players
+                .map((p, i) => ({ player: p, index: i }))
+                .filter(({ player, index }) => !player.isEliminated && index !== shooterIndex);
+
+            if (activePlayers.length === 0) return -1;
+
+            let count = sum % activePlayers.length;
+            if (count === 0) count = activePlayers.length;
+
+            if (gameState.direction === 'clockwise') {
+                let currentPos = activePlayers.findIndex(({ index }) => index > shooterIndex);
+                if (currentPos === -1) currentPos = 0;
+                
+                const targetPos = (currentPos + count - 1) % activePlayers.length;
+                return activePlayers[targetPos].index;
+            } else {
+                let currentPos = activePlayers.findIndex(({ index }) => index < shooterIndex);
+                if (currentPos === -1) currentPos = activePlayers.length - 1;
+                
+                const targetPos = (currentPos - count + 1 + activePlayers.length) % activePlayers.length;
+                return activePlayers[targetPos].index;
+            }
+        }
+
+        function displayResult(result) {
+            const display = document.getElementById('result-display');
+            const text = document.getElementById('result-text');
+            
+            const shooter = gameState.players[result.shooterIndex];
+            const target = result.targetIndex >= 0 ? gameState.players[result.targetIndex] : null;
+
+            let message = `🎲 Dadi: ${result.dice.join(', ')}<br>`;
+            
+            if (result.isPoker) {
+                message += `<br>🏆🏆🏆 POKER! 🏆🏆🏆<br>`;
+                message += `<strong style="font-size: 1.5em; color: #ffd700;">VITTORIA ISTANTANEA!</strong><br>`;
+                message += `${shooter.name} vince la partita!<br>`;
+            } else {
+                message += `📊 Somma: ${result.sum}<br>`;
+                
+                if (result.specialEffect) {
+                    message += `✨ ${result.specialEffect}!<br>`;
+                }
+                
+                if (target) {
+                    message += `🎯 Bersaglio: ${target.name}<br>`;
+                    message += `💥 Danno: ${result.damage}<br>`;
+                }
+                
+                if (result.selfHeal > 0) {
+                    message += `💚 Cura: ${result.selfHeal} HP<br>`;
+                }
+                
+                if (result.cardsDrawn > 0) {
+                    message += `🃏 Pesca ${result.cardsDrawn} carta/e del fato<br>`;
+                }
+            }
+
+            text.innerHTML = message;
+            display.classList.remove('hidden');
+        }
+
+        function applyResult(result) {
+            // Save current state for rollback (Master only)
+            if (gameState.isMaster) {
+                gameState.previousState = {
+                    players: JSON.parse(JSON.stringify(gameState.players)),
+                    currentTurn: gameState.currentTurn,
+                    history: [...gameState.history],
+                    stats: JSON.parse(JSON.stringify(gameState.stats))
+                };
             }
             
-            const dice = [...diceValues].sort();
-            const sum = diceValues.reduce((a, b) => a + b, 0);
+            const shooter = gameState.players[result.shooterIndex];
             
-            // Poker
-            if (activeDiceCount === 4 && dice.every(d => d === dice[0])) {
-                document.getElementById('resultType').textContent = `🎰 POKER di ${dice[0]}!`;
-                document.getElementById('damageValue').textContent = '🏆 VITTORIA!';
-                document.getElementById('bonusInfo').innerHTML = '<div style="color: #FFD700; font-weight: bold;">⭐ VINCI LA PARTITA! ⭐</div>';
-                document.getElementById('targetInfo').textContent = '';
-                document.getElementById('resultBox').style.display = 'block';
+            // Initialize stats for shooter if not exists
+            if (!gameState.stats[shooter.name]) {
+                gameState.stats[shooter.name] = {
+                    damageDealt: 0,
+                    damageTaken: 0,
+                    healingDone: 0,
+                    specialMoves: 0,
+                    turns: 0
+                };
+            }
+            
+            gameState.stats[shooter.name].turns++;
+            
+            // POKER = INSTANT WIN
+            if (result.isPoker) {
+                gameState.stats[shooter.name].specialMoves++;
+                gameState.history.push(`🏆 ${shooter.name} ha ottenuto POKER (${result.dice.join(',')}) e VINCE LA PARTITA!`);
+                
+                database.ref('games/' + gameState.gameCode).update({
+                    history: gameState.history,
+                    gameEnded: true,
+                    winner: shooter.name,
+                    stats: gameState.stats
+                });
+                
+                playSound('poker');
+                
+                setTimeout(() => {
+                    const isYou = shooter.name === gameState.playerName;
+                    showWinnerNotification(shooter.name, isYou);
+                }, 1000);
+                
                 return;
             }
             
-            // Tris
-             if (activeDiceCount >= 3) {
-                // Conta quante volte appare ogni numero
-                const counts = {};
-                for (let i = 0; i < dice.length; i++) {
-                    counts[dice[i]] = (counts[dice[i]] || 0) + 1;
-                }
-                
-                // Trova il numero che appare 3+ volte
-                let trisValue = null;
-                for (let num in counts) {
-                    if (counts[num] >= 3) {
-                        trisValue = parseInt(num);
-                        break;
-                    }
-                }
-                
-                if (trisValue !== null) {
-                    isTris = true;
-                    isPair = false;
-                    
-                    // Calcolo TRIS: (valore × valore) + valore + eventuali dadi extra
-                    let baseDamage = (trisValue * trisValue) + trisValue;
-                    
-                    // Se ci sono 4 dadi, somma il 4° dado
-                    let extraDice = 0;
-                    if (activeDiceCount === 4) {
-                        // Trova il dado diverso
-                        for (let i = 0; i < diceValues.length; i++) {
-                            if (diceValues[i] !== trisValue) {
-                                extraDice = diceValues[i];
-                                break;
-                            }
-                        }
-                    }
-                    
-                    calculatedDamage = baseDamage + extraDice;
-                    
-                    // LOG PER DEBUG
-                    console.log('=== TRIS CALCULATION ===');
-                    console.log('Dice values:', diceValues);
-                    console.log('Tris value:', trisValue);
-                    console.log('Base damage:', trisValue, '×', trisValue, '+', trisValue, '=', baseDamage);
-                    console.log('Extra dice:', extraDice);
-                    console.log('TOTAL DAMAGE:', calculatedDamage);
-                    console.log('=======================');
-                    
-                    document.getElementById('resultType').textContent = `🎰 TRIS di ${trisValue}!`;
-                    document.getElementById('bonusInfo').innerHTML = `
-                        <div style="color: #4CAF50; font-weight: bold; margin-top: 10px;">
-                            ✨ Recuperi ${calculatedDamage} HP + Pesca Carta del Fato<br>
-                            <span style="font-size: 0.9em; color: #666;">Calcolo: (${trisValue}×${trisValue}) + ${trisValue}${extraDice > 0 ? ' + ' + extraDice : ''} = ${calculatedDamage}</span>
-                        </div>
-                    `;
-                    
-                    targetPlayer = findTarget(sum);
-                    document.getElementById('damageValue').textContent = `${calculatedDamage} DANNI`;
-                    document.getElementById('targetInfo').textContent = targetPlayer !== null ? `🎯 ${gameData.players[targetPlayer].name}` : '';
-                    document.getElementById('resultBox').style.display = 'block';
-                    return;
-                }
-            }
-            
-            // Coppia
-            if (activeDiceCount >= 2) {
-                const counts = {};
-                dice.forEach(d => counts[d] = (counts[d] || 0) + 1);
-                const pairVal = Object.keys(counts).find(k => counts[k] >= 2);
-                
-                if (pairVal) {
-                    const remaining = diceValues.filter(d => d != pairVal);
-                    const extra = remaining.reduce((a, b) => a + b, 0);
-                    
-                    isPair = true;
-                    isTris = false;
-                    calculatedDamage = parseInt(pairVal) * parseInt(pairVal) + extra;
-                    
-                    document.getElementById('resultType').textContent = `🎲 COPPIA di ${pairVal}`;
-                    document.getElementById('bonusInfo').innerHTML = `
-                        <div style="color: #2196F3; font-weight: bold;">
-                            ✨ Pesca Carta<br>
-                            <span style="font-size: 0.9em; color: #666;">${pairVal}×${pairVal} + ${extra} = ${calculatedDamage}</span>
-                        </div>
-                    `;
-                    
-                    targetPlayer = findTarget(sum);
-                    document.getElementById('damageValue').textContent = `${calculatedDamage} DANNI`;
-                    document.getElementById('targetInfo').textContent = targetPlayer !== null ? `🎯 ${gameData.players[targetPlayer].name}` : '';
-                    document.getElementById('resultBox').style.display = 'block';
-                    return;
-                }
-            }
-            
-            // Normale
-            isPair = false;
-            isTris = false;
-            calculatedDamage = sum;
-            
-            document.getElementById('resultType').textContent = `🎲 Normale`;
-            document.getElementById('bonusInfo').textContent = '';
-            document.getElementById('damageValue').textContent = `${calculatedDamage} DANNI`;
-            
-            targetPlayer = findTarget(sum);
-            document.getElementById('targetInfo').textContent = targetPlayer !== null ? `🎯 ${gameData.players[targetPlayer].name}` : '';
-            document.getElementById('resultBox').style.display = 'block';
-        }
+            const target = result.targetIndex >= 0 ? gameState.players[result.targetIndex] : null;
 
-        function findTarget(count) {
-            let idx = gameData.currentTurn;
-            let steps = 0;
-            
-            while (steps < count) {
-                if (gameData.clockwise) {
-                    idx = (idx + 1) % gameData.players.length;
+            // Apply damage
+            if (target) {
+                // Initialize stats for target if not exists
+                if (!gameState.stats[target.name]) {
+                    gameState.stats[target.name] = {
+                        damageDealt: 0,
+                        damageTaken: 0,
+                        healingDone: 0,
+                        specialMoves: 0,
+                        turns: 0
+                    };
+                }
+                
+                gameState.stats[shooter.name].damageDealt += result.damage;
+                gameState.stats[target.name].damageTaken += result.damage;
+                
+                const wasAlive = !target.isEliminated;
+                target.hp = Math.max(0, target.hp - result.damage);
+                
+                if (target.hp === 0 && wasAlive) {
+                    target.isEliminated = true;
+                    
+                    // Show elimination notification to the eliminated player
+                    if (target.name === gameState.playerName && !gameState.isMaster) {
+                        setTimeout(() => showEliminatedNotification(), 500);
+                    }
+                    
+                    playSound('elimination');
                 } else {
-                    idx = (idx - 1 + gameData.players.length) % gameData.players.length;
+                    playSound('hit');
+                    
+                    // Visual effects for the player who got hit
+                    if (target.name === gameState.playerName) {
+                        screenFlash('damage');
+                        createParticles(window.innerWidth / 2, window.innerHeight / 2, 'damage');
+                    }
                 }
                 
-                if (idx !== gameData.currentTurn && !gameData.players[idx].eliminated) {
-                    steps++;
+                animateHP(result.targetIndex, -result.damage);
+            }
+
+            // Apply heal
+            if (result.selfHeal > 0) {
+                shooter.hp += result.selfHeal;
+                gameState.stats[shooter.name].healingDone += result.selfHeal;
+                animateHP(result.shooterIndex, result.selfHeal);
+                playSound('heal');
+                
+                // Visual effects for healer
+                if (shooter.name === gameState.playerName) {
+                    screenFlash('heal');
+                    createParticles(window.innerWidth / 2, window.innerHeight / 2, 'heal');
                 }
             }
             
-            return idx;
+            // Track special moves
+            if (result.specialEffect === 'Coppia' || result.specialEffect === 'Tris') {
+                gameState.stats[shooter.name].specialMoves++;
+            }
+
+            // History
+            let historyText = `${shooter.name} tira ${result.dice.join(', ')}`;
+            if (result.specialEffect) historyText += ` (${result.specialEffect})`;
+            if (target) historyText += ` → ${target.name} riceve ${result.damage} danni`;
+            if (result.selfHeal > 0) historyText += ` | ${shooter.name} si cura di ${result.selfHeal}`;
+            
+            gameState.history.push(historyText);
+
+            // Next turn
+            const nextTurn = getNextActiveTurn();
+
+            // Update Firebase
+            database.ref('games/' + gameState.gameCode).update({
+                players: gameState.players,
+                currentTurn: nextTurn,
+                history: gameState.history,
+                stats: gameState.stats
+            });
         }
 
-        async function applyDamage() {
-            if (!isHost || targetPlayer === null) return;
+        function showEliminatedNotification() {
+            // Create overlay
+            const overlay = document.createElement('div');
+            overlay.className = 'hit-overlay';
+            document.body.appendChild(overlay);
             
-            const target = gameData.players[targetPlayer];
-            const attacker = gameData.players[gameData.currentTurn];
-            
-            // Get dice values for display
-            const diceValues = [];
-            for (let i = 1; i <= activeDiceCount; i++) {
-                const val = parseInt(document.getElementById(`d${i}`).value);
-                if (val) diceValues.push(val);
-            }
-            
-            // Save last action
-            const actionType = isTris ? 'TRIS' : isPair ? 'COPPIA' : 'Normale';
-            attacker.lastAction = {
-                dice: diceValues.join(', '),
-                type: actionType,
-                damage: calculatedDamage,
-                target: target.name,
-                timestamp: Date.now()
-            };
-            
-            // Apply damage with animation
-            target.hp -= calculatedDamage;
-            playSound('damage');
-            animatePlayer(targetPlayer, 'damage');
-            
-            if (isTris) {
-                attacker.hp = Math.min(attacker.hp + calculatedDamage, attacker.maxHp + 50);
-                addLog(`💚 ${attacker.name} +${calculatedDamage} HP`, 'heal');
-                playSound('heal');
-                animatePlayer(gameData.currentTurn, 'heal');
-            }
-            
-            if (target.hp <= 0) {
-                target.hp = 0;
-                target.eliminated = true;
-                addLog(`☠️ ${target.name} ELIMINATO!`, 'damage');
-                playSound('death');
-                animatePlayer(targetPlayer, 'death');
-            }
-            
-            const type = isTris ? 'TRIS' : isPair ? 'COPPIA' : 'Normale';
-            addLog(`💥 ${attacker.name} → ${calculatedDamage} a ${target.name} (${type})`, 'damage');
-            
-            if (isPair || isTris) {
-                addLog(`🃏 ${attacker.name} pesca Carta`);
-            }
-            
-            for (let i = 1; i <= 4; i++) {
-                document.getElementById(`d${i}`).value = '';
-            }
-            document.getElementById('resultBox').style.display = 'none';
-            
-            await saveGame();
-            checkWinner();
-            
-            // Auto next turn
+            setTimeout(() => overlay.classList.add('show'), 10);
+
+            // Create notification
+            const notification = document.createElement('div');
+            notification.className = 'eliminated-notification';
+            notification.innerHTML = `
+                <h2>☠️ SEI STATO ELIMINATO! ☠️</h2>
+                <div style="font-size: 1.3em; color: #ff6b6b; margin-top: 20px;">
+                    La partita continua...
+                </div>
+            `;
+            document.body.appendChild(notification);
+
+            // Show animation
             setTimeout(() => {
-                nextTurn();
-            }, 1500);
-        }
+                notification.classList.add('show');
+            }, 10);
 
-        async function quickDamage(idx) {
-            if (!isHost) return;
-            const amt = prompt(`Danno a ${gameData.players[idx].name}:`);
-            if (!amt) return;
-            
-            const dmg = parseInt(amt);
-            gameData.players[idx].hp -= dmg;
-            
-            playSound('damage');
-            animatePlayer(idx, 'damage');
-            
-            if (gameData.players[idx].hp <= 0) {
-                gameData.players[idx].hp = 0;
-                gameData.players[idx].eliminated = true;
-                addLog(`☠️ ${gameData.players[idx].name} eliminato!`, 'damage');
-                playSound('death');
-                animatePlayer(idx, 'death');
+            // Vibrate if supported
+            if (navigator.vibrate) {
+                navigator.vibrate([300, 100, 300, 100, 500]);
             }
-            
-            addLog(`💥 ${gameData.players[idx].name} -${dmg} HP`, 'damage');
-            await saveGame();
-            checkWinner();
+
+            // Remove after 4 seconds
+            setTimeout(() => {
+                overlay.style.opacity = '0';
+                notification.style.transform = 'translate(-50%, -50%) scale(0)';
+                setTimeout(() => {
+                    notification.remove();
+                    overlay.remove();
+                }, 400);
+            }, 4000);
         }
 
-        async function quickHeal(idx) {
-            if (!isHost) return;
-            const amt = prompt(`Cura ${gameData.players[idx].name}:`);
-            if (!amt) return;
+        function showWinnerNotification(winnerName, isYou = false) {
+            // Create overlay
+            const overlay = document.createElement('div');
+            overlay.className = 'hit-overlay';
+            document.body.appendChild(overlay);
             
-            const heal = parseInt(amt);
-            
-            // Check if reviving
-            if (gameData.players[idx].eliminated) {
-                gameData.players[idx].eliminated = false;
-                gameData.players[idx].hp = heal;
-                playSound('revive');
-                animatePlayer(idx, 'revive');
-                addLog(`👻 ${gameData.players[idx].name} risorge con ${heal} HP!`, 'heal');
-            } else {
-                gameData.players[idx].hp = Math.min(gameData.players[idx].hp + heal, gameData.players[idx].maxHp + 100);
-                playSound('heal');
-                animatePlayer(idx, 'heal');
-                addLog(`💚 ${gameData.players[idx].name} +${heal} HP`, 'heal');
+            setTimeout(() => overlay.classList.add('show'), 10);
+
+            // Build statistics HTML
+            let statsHTML = '';
+            if (Object.keys(gameState.stats).length > 0) {
+                // Find MVP (most damage dealt)
+                let mvpName = '';
+                let maxDamage = 0;
+                let mostHealing = 0;
+                let healerName = '';
+                let mostSpecials = 0;
+                let specialistName = '';
+                
+                Object.keys(gameState.stats).forEach(name => {
+                    const stats = gameState.stats[name];
+                    if (stats.damageDealt > maxDamage) {
+                        maxDamage = stats.damageDealt;
+                        mvpName = name;
+                    }
+                    if (stats.healingDone > mostHealing) {
+                        mostHealing = stats.healingDone;
+                        healerName = name;
+                    }
+                    if (stats.specialMoves > mostSpecials) {
+                        mostSpecials = stats.specialMoves;
+                        specialistName = name;
+                    }
+                });
+                
+                statsHTML = `
+                    <div class="game-stats">
+                        <h3>📊 Statistiche Partita</h3>
+                        ${mvpName ? `<div class="stat-item">
+                            <span class="label">🏅 MVP (Più Danni)</span>
+                            <span class="value">${mvpName} - ${maxDamage} danni</span>
+                        </div>` : ''}
+                        ${healerName && mostHealing > 0 ? `<div class="stat-item">
+                            <span class="label">💚 Miglior Guaritore</span>
+                            <span class="value">${healerName} - ${mostHealing} HP</span>
+                        </div>` : ''}
+                        ${specialistName && mostSpecials > 0 ? `<div class="stat-item">
+                            <span class="label">✨ Re delle Combo</span>
+                            <span class="value">${specialistName} - ${mostSpecials} speciali</span>
+                        </div>` : ''}
+                        <div class="stat-item">
+                            <span class="label">⏱️ Durata Partita</span>
+                            <span class="value">${getGameDuration()}</span>
+                        </div>
+                    </div>
+                `;
             }
-            
-            await saveGame();
+
+            // Create notification
+            const notification = document.createElement('div');
+            notification.className = 'winner-notification';
+            notification.innerHTML = `
+                <h2>🏆 ${isYou ? 'HAI VINTO!' : 'PARTITA TERMINATA!'} 🏆</h2>
+                <div class="winner-name">${winnerName}</div>
+                <div style="font-size: 1.2em; color: #1a1a2e; margin-top: 20px; font-weight: 600;">
+                    ${isYou ? 'Complimenti campione!' : 'è il vincitore!'}
+                </div>
+                ${statsHTML}
+            `;
+            document.body.appendChild(notification);
+
+            // Show animation
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 10);
+
+            // Vibrate if supported
+            if (navigator.vibrate && isYou) {
+                navigator.vibrate([100, 50, 100, 50, 100, 50, 500]);
+            }
+
+            // Add new game button for master after 3 seconds
+            if (gameState.isMaster) {
+                setTimeout(() => {
+                    const newGameBtn = document.createElement('button');
+                    newGameBtn.textContent = '🎮 Nuova Partita';
+                    newGameBtn.style.cssText = 'margin-top: 20px; width: auto; padding: 15px 30px;';
+                    newGameBtn.onclick = () => {
+                        location.reload();
+                    };
+                    notification.appendChild(newGameBtn);
+                }, 3000);
+            }
+        }
+        
+        function getGameDuration() {
+            if (!gameState.startTime) return '0:00';
+            const duration = Date.now() - gameState.startTime;
+            const minutes = Math.floor(duration / 60000);
+            const seconds = Math.floor((duration % 60000) / 1000);
+            return `${minutes}:${String(seconds).padStart(2, '0')}`;
         }
 
-        async function nextTurn() {
-            if (!isHost) return;
+        function getNextActiveTurn() {
+            const activePlayers = gameState.players.map((p, i) => i).filter(i => !gameState.players[i].isEliminated);
             
-            const alive = gameData.players.filter(p => !p.eliminated);
-            if (alive.length <= 1) return;
-            
+            if (activePlayers.length <= 1) return gameState.currentTurn;
+
+            let nextIndex = gameState.currentTurn;
             let attempts = 0;
+            
             do {
-                if (gameData.clockwise) {
-                    gameData.currentTurn = (gameData.currentTurn + 1) % gameData.players.length;
+                if (gameState.direction === 'clockwise') {
+                    nextIndex = (nextIndex + 1) % gameState.players.length;
                 } else {
-                    gameData.currentTurn = (gameData.currentTurn - 1 + gameData.players.length) % gameData.players.length;
+                    nextIndex = (nextIndex - 1 + gameState.players.length) % gameState.players.length;
                 }
                 attempts++;
-                if (attempts > gameData.players.length) break;
-            } while (gameData.players[gameData.currentTurn].eliminated);
-            
-            addLog(`🔄 Turno: ${gameData.players[gameData.currentTurn].name}`);
-            await saveGame();
+            } while (gameState.players[nextIndex].isEliminated && attempts < gameState.players.length);
+
+            return nextIndex;
         }
 
-        async function toggleDirection() {
-            if (!isHost) return;
-            
-            gameData.clockwise = !gameData.clockwise;
-            addLog(`🔄 Senso: ${gameData.clockwise ? 'ORARIO' : 'ANTIORARIO'}`, 'special');
-            await saveGame();
+        function animateHP(playerIndex, amount) {
+            const card = document.getElementById(`player-card-${playerIndex}`);
+            if (!card) return;
+
+            if (amount < 0) {
+                card.classList.add('animate-damage');
+                setTimeout(() => card.classList.remove('animate-damage'), 500);
+            } else {
+                card.classList.add('animate-heal');
+                setTimeout(() => card.classList.remove('animate-heal'), 500);
+            }
+
+            showFloatingNumber(card, amount);
         }
 
-        function addLog(msg, type = '') {
-            if (!gameData.log) {
-                gameData.log = [];
-            }
+        function showFloatingNumber(element, amount) {
+            const rect = element.getBoundingClientRect();
+            const floater = document.createElement('div');
+            floater.className = `floating-number ${amount < 0 ? 'damage' : 'heal'}`;
+            floater.textContent = amount > 0 ? `+${amount}` : amount;
+            floater.style.left = rect.left + rect.width / 2 + 'px';
+            floater.style.top = rect.top + 'px';
             
-            gameData.log.unshift({
-                message: msg,
-                type: type,
-                time: new Date().toLocaleTimeString()
-            });
-            
-            if (gameData.log.length > 100) {
-                gameData.log = gameData.log.slice(0, 100);
-            }
+            document.body.appendChild(floater);
+            setTimeout(() => floater.remove(), 1000);
         }
-
-        async function saveGame() {
-            if (!isHost || !gameRef || !gameData) return;
-            
-            try {
-                // Ensure log exists before saving
-                if (!gameData.log) {
-                    gameData.log = [];
-                }
-                
-                await gameRef.set(gameData);
-            } catch (e) {
-                console.error('Save error:', e);
-            }
-        }
-
-        function checkWinner() {
-            const alive = gameData.players.filter(p => !p.eliminated);
-            if (alive.length === 1) {
-                addLog(`🏆 ${alive[0].name} VINCE!`);
-                setTimeout(() => alert(`🏆 ${alive[0].name} VINCE con ${alive[0].hp} HP!`), 500);
-            }
-        }
-
-        async function endGame() {
-            if (!isHost) return;
-            
-            if (confirm('Terminare partita?')) {
-                // Find winner before ending
-                const alivePlayers = gameData.players.filter(p => !p.eliminated);
-                if (alivePlayers.length > 0) {
-                    // Sort by HP to find winner
-                    alivePlayers.sort((a, b) => b.hp - a.hp);
-                    gameData.winner = alivePlayers[0].name;
-                    addLog(`🏁 Partita terminata! 🏆 Vincitore: ${alivePlayers[0].name} con ${alivePlayers[0].hp} HP`);
-                    await saveGame();
-                }
-                
-                setTimeout(async () => {
-                    try {
-                        await gameRef.remove();
-                    } catch (e) {}
-                    
-                    if (timerInterval) clearInterval(timerInterval);
-                    location.reload();
-                }, 2000); // 2 seconds delay so spectators can see winner
-            }
-        }
-
-        // Auto-join from URL
-        window.addEventListener('load', () => {
-            const params = new URLSearchParams(window.location.search);
-            const gameId = params.get('game');
-            
-            if (gameId) {
-                document.getElementById('joinCode').value = gameId;
-                selectMode('join');
-                setTimeout(() => joinGame(), 500);
-            }
-        });
-
-        // Initialize
-        setDiceCount(3);
-
-        // ================================
-        // SOUND & ANIMATION SYSTEM
-        // ================================
-        const sounds = {
-            damage: new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIGGa47OihUxMKTKXh8bllHAU2jdXzzn0vBSh+zPDajzsKElyx6OyrWBUIQ5zd8sFuIwUqfs/v14s5CBZiturqpVIUCkyn4PG4Yh0FOIzU8tB+LwQnfM3x24w6ChFbrt/u'),
-            heal: new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIGGa47OihUxMKTKXh8bllHAU2jdXzzn0vBSh+zPDajzsKElyx6OyrWBUIQ5zd8sFuIwUqfs/v14s5CBZiturqpVIUCkyn4PG4Yh0FOIzU8tB+LwQnfM3x24w6ChFbrt/v'),
-            death: new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACAgH9/fn9+f4CAf39+f35/gICAf39+f35/gIB/f35/fn+AgIB/f35/fn+AgH9/fn9+f4CAgH9/fn9+f4CAf39+f35/gICAf39+f35/gIB/f35/fn+AgIB/f35/fn+AgH9/fn9+f4CAgH9/fn9+f4CAf39+f35/gICAf39+f35/gIB/f35/fn+AgIB/f35/fn+AgH9/fn9+f4CAgH9/fn9+f4CAf39+f35/gICAf39+f35/gIB/f35/fn8='),
-            revive: new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAAB/gIGDhIaHiYuMjpCRk5SWl5manJ2foKKjpaan')
-        };
 
         function playSound(type) {
-            try {
-                const sound = sounds[type];
-                if (sound) {
-                    sound.currentTime = 0;
-                    sound.volume = 0.3;
-                    sound.play().catch(e => console.log('Audio play failed:', e));
-                }
-            } catch (e) {
-                console.log('Sound error:', e);
+            if (!window.AudioContext && !window.webkitAudioContext) return;
+            
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            switch(type) {
+                case 'hit':
+                    // Suono di colpo - discendente
+                    oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(150, audioContext.currentTime + 0.2);
+                    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+                    oscillator.type = 'square';
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 0.2);
+                    break;
+                    
+                case 'heal':
+                    // Suono di cura - ascendente armonioso
+                    oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(800, audioContext.currentTime + 0.3);
+                    gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                    oscillator.type = 'sine';
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 0.3);
+                    break;
+                    
+                case 'elimination':
+                    // Suono di eliminazione - drammatico
+                    oscillator.frequency.setValueAtTime(600, audioContext.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(50, audioContext.currentTime + 0.5);
+                    gainNode.gain.setValueAtTime(0.4, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                    oscillator.type = 'sawtooth';
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 0.5);
+                    break;
+                    
+                case 'revive':
+                    // Suono di rianimazione - positivo e crescente
+                    oscillator.frequency.setValueAtTime(300, audioContext.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(1000, audioContext.currentTime + 0.4);
+                    gainNode.gain.setValueAtTime(0.25, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+                    oscillator.type = 'triangle';
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 0.4);
+                    break;
+                    
+                case 'poker':
+                    // Suono di vittoria - triplo tono celebrativo
+                    const playVictoryTone = (freq, delay) => {
+                        const osc = audioContext.createOscillator();
+                        const gain = audioContext.createGain();
+                        osc.connect(gain);
+                        gain.connect(audioContext.destination);
+                        osc.frequency.value = freq;
+                        osc.type = 'sine';
+                        gain.gain.setValueAtTime(0.3, audioContext.currentTime + delay);
+                        gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + delay + 0.3);
+                        osc.start(audioContext.currentTime + delay);
+                        osc.stop(audioContext.currentTime + delay + 0.3);
+                    };
+                    playVictoryTone(523, 0);    // C5
+                    playVictoryTone(659, 0.15); // E5
+                    playVictoryTone(784, 0.3);  // G5
+                    return; // Don't use the default oscillator
+            }
+        }
+        
+        function screenFlash(type) {
+            const flash = document.createElement('div');
+            flash.className = `screen-flash ${type}`;
+            document.body.appendChild(flash);
+            
+            setTimeout(() => flash.remove(), 1500);
+            
+            // Add shake effect for damage
+            if (type === 'damage') {
+                document.body.classList.add('shake');
+                setTimeout(() => document.body.classList.remove('shake'), 500);
+            }
+        }
+        
+        function createParticles(x, y, type) {
+            const particles = type === 'damage' ? ['💥', '💢', '⚡'] : 
+                             type === 'heal' ? ['💚', '✨', '💫'] :
+                             ['🌟', '✨', '⭐'];
+            
+            const count = type === 'revive' ? 12 : 8;
+            
+            for (let i = 0; i < count; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.textContent = particles[Math.floor(Math.random() * particles.length)];
+                
+                const angle = (360 / count) * i;
+                const distance = 100 + Math.random() * 50;
+                const tx = Math.cos(angle * Math.PI / 180) * distance;
+                const ty = Math.sin(angle * Math.PI / 180) * distance;
+                
+                particle.style.left = x + 'px';
+                particle.style.top = y + 'px';
+                particle.style.setProperty('--tx', tx + 'px');
+                particle.style.setProperty('--ty', ty + 'px');
+                
+                document.body.appendChild(particle);
+                
+                setTimeout(() => particle.remove(), 1500);
             }
         }
 
-        function animatePlayer(playerIndex, animationType) {
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                if (!gameState.startTime) return;
+                
+                const elapsed = Date.now() - gameState.startTime;
+                const minutes = Math.floor(elapsed / 60000);
+                const seconds = Math.floor((elapsed % 60000) / 1000);
+                
+                document.getElementById('timer').textContent = 
+                    `Tempo: ${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            }, 1000);
+        }
+
+        // Master Controls
+        function reverseDirection() {
+            if (!gameState.isMaster) return;
+            
+            const newDirection = gameState.direction === 'clockwise' ? 'counterclockwise' : 'clockwise';
+            database.ref('games/' + gameState.gameCode).update({ direction: newDirection });
+            
+            gameState.history.push('⭮ Direzione invertita');
+            database.ref('games/' + gameState.gameCode + '/history').set(gameState.history);
+        }
+        
+        function rollbackLastTurn() {
+            if (!gameState.isMaster) return;
+            
+            if (!gameState.previousState) {
+                alert('Nessuna azione da annullare!');
+                return;
+            }
+            
+            if (!confirm('Vuoi annullare l\'ultima giocata e far ripetere il turno?')) return;
+            
+            // Restore previous state
+            gameState.players = gameState.previousState.players;
+            gameState.currentTurn = gameState.previousState.currentTurn;
+            gameState.history = gameState.previousState.history;
+            gameState.stats = gameState.previousState.stats;
+            
+            gameState.history.push('↩️ Ultima giocata annullata dal Master');
+            
+            // Update Firebase
+            database.ref('games/' + gameState.gameCode).update({
+                players: gameState.players,
+                currentTurn: gameState.currentTurn,
+                history: gameState.history,
+                stats: gameState.stats
+            });
+            
+            // Clear previous state
+            gameState.previousState = null;
+        }
+
+        function changeTurn() {
+            if (!gameState.isMaster) return;
+            
+            const nextTurnIndex = parseInt(document.getElementById('next-turn-player').value);
+            database.ref('games/' + gameState.gameCode).update({ currentTurn: nextTurnIndex });
+            
+            const playerName = gameState.players[nextTurnIndex].name;
+            gameState.history.push(`⏭️ Turno cambiato a ${playerName}`);
+            database.ref('games/' + gameState.gameCode + '/history').set(gameState.history);
+        }
+
+        function updateDiceCount() {
+            if (!gameState.isMaster) return;
+            
+            const count = parseInt(document.getElementById('dice-count').value);
+            if (count < 1 || count > 4) {
+                alert('Numero dadi deve essere tra 1 e 4!');
+                return;
+            }
+            
+            database.ref('games/' + gameState.gameCode).update({ diceCount: count });
+            
+            gameState.history.push(`🎲 Dadi impostati a ${count}`);
+            database.ref('games/' + gameState.gameCode + '/history').set(gameState.history);
+        }
+
+        function modifyHP(type) {
+            if (!gameState.isMaster) return;
+            
+            const selectedOptions = document.getElementById('target-players').selectedOptions;
+            const amount = parseInt(document.getElementById('hp-amount').value);
+            
+            if (!amount || amount <= 0) {
+                alert('Inserisci un valore valido!');
+                return;
+            }
+            
+            if (selectedOptions.length === 0) {
+                alert('Seleziona almeno un giocatore!');
+                return;
+            }
+            
+            const playerIndices = Array.from(selectedOptions).map(opt => parseInt(opt.value));
+            
+            playerIndices.forEach(playerIndex => {
+                const player = gameState.players[playerIndex];
+                
+                if (type === 'damage') {
+                    player.hp = Math.max(0, player.hp - amount);
+                    if (player.hp === 0) player.isEliminated = true;
+                    animateHP(playerIndex, -amount);
+                    gameState.history.push(`💥 ${player.name} riceve ${amount} danni (Master)`);
+                } else {
+                    player.hp += amount;
+                    if (player.isEliminated) player.isEliminated = false;
+                    animateHP(playerIndex, amount);
+                    gameState.history.push(`💚 ${player.name} recupera ${amount} HP (Master)`);
+                }
+            });
+            
+            database.ref('games/' + gameState.gameCode).update({
+                players: gameState.players,
+                history: gameState.history
+            });
+            
+            document.getElementById('hp-amount').value = '';
+        }
+
+        function revivePlayer() {
+            if (!gameState.isMaster) return;
+            
+            const selectedOptions = document.getElementById('target-players').selectedOptions;
+            
+            if (selectedOptions.length === 0) {
+                alert('Seleziona almeno un giocatore da rianimare!');
+                return;
+            }
+            
+            const playerIndices = Array.from(selectedOptions).map(opt => parseInt(opt.value));
+            
+            playerIndices.forEach(playerIndex => {
+                const player = gameState.players[playerIndex];
+                
+                if (!player.isEliminated) {
+                    return; // Skip non-eliminated players
+                }
+                
+                player.isEliminated = false;
+                player.hp = 20;
+                
+                animateHP(playerIndex, 20);
+                gameState.history.push(`🔄 ${player.name} è stato rianimato con 20 HP`);
+            });
+            
+            playSound('revive');
+            screenFlash('revive');
+            createParticles(window.innerWidth / 2, window.innerHeight / 2, 'revive');
+            
+            database.ref('games/' + gameState.gameCode).update({
+                players: gameState.players,
+                history: gameState.history
+            });
+        }
+
+        function endGame() {
+            if (!gameState.isMaster) return;
+            
+            if (!confirm('Sei sicuro di voler terminare la partita?')) return;
+            
+            const sorted = [...gameState.players].sort((a, b) => b.hp - a.hp);
+            const winner = sorted[0];
+            
+            gameState.history.push(`🏁 Partita terminata. Vincitore: ${winner.name} con ${winner.hp} HP`);
+            
+            database.ref('games/' + gameState.gameCode).update({
+                history: gameState.history,
+                gameEnded: true,
+                winner: winner.name
+            });
+            
+            // Show winner notification to all players
             setTimeout(() => {
-                const cards = document.querySelectorAll('.player-card');
-                if (cards[playerIndex]) {
-                    cards[playerIndex].classList.add(`animate-${animationType}`);
-                    setTimeout(() => {
-                        cards[playerIndex].classList.remove(`animate-${animationType}`);
-                    }, 1200);
-                }
-            }, 100);
+                const isYou = winner.name === gameState.playerName;
+                showWinnerNotification(winner.name, isYou);
+            }, 500);
         }
 
-        async function manualChangeTurn() {
-            if (!isHost) return;
+        function swapHP() {
+            if (!gameState.isMaster) return;
             
-            const alivePlayers = gameData.players.filter(p => !p.eliminated);
-            if (alivePlayers.length <= 1) return;
+            const player1Index = parseInt(document.getElementById('swap-player-1').value);
+            const player2Index = parseInt(document.getElementById('swap-player-2').value);
             
-            const choices = alivePlayers.map((p, i) => `${p.id + 1}. ${p.name}`).join('\n');
-            const choice = prompt(`Seleziona giocatore (numero):\n${choices}`);
-            
-            if (!choice) return;
-            
-            const playerNum = parseInt(choice) - 1;
-            if (playerNum >= 0 && playerNum < gameData.players.length && !gameData.players[playerNum].eliminated) {
-                gameData.currentTurn = playerNum;
-                addLog(`🎯 Turno manuale: ${gameData.players[playerNum].name}`, 'special');
-                await saveGame();
-            } else {
-                alert('Numero non valido!');
+            if (player1Index === player2Index) {
+                alert('Seleziona due giocatori diversi!');
+                return;
             }
+            
+            const player1 = gameState.players[player1Index];
+            const player2 = gameState.players[player2Index];
+            
+            // Swap HP values
+            const tempHP = player1.hp;
+            player1.hp = player2.hp;
+            player2.hp = tempHP;
+            
+            gameState.history.push(`🔄 ${player1.name} e ${player2.name} hanno scambiato HP (${player2.hp} ↔ ${player1.hp})`);
+            
+            database.ref('games/' + gameState.gameCode).update({
+                players: gameState.players,
+                history: gameState.history
+            });
+            
+            // Animate both players
+            animateHP(player1Index, 0);
+            animateHP(player2Index, 0);
+        }
+
+        function newGame() {
+            if (!gameState.isMaster) return;
+            
+            if (!confirm('Vuoi iniziare una nuova partita? Gli HP saranno resettati.')) return;
+            
+            // Use the initial HP that was set when the game was created
+            const resetHP = gameState.initialHP || 70;
+            
+            // Reset all players
+            gameState.players.forEach(player => {
+                player.hp = resetHP;
+                player.isEliminated = false;
+            });
+            
+            // Reset game state
+            gameState.currentTurn = 0;
+            gameState.direction = 'clockwise';
+            gameState.history = ['🎮 Nuova partita iniziata!'];
+            gameState.startTime = Date.now();
+            
+            database.ref('games/' + gameState.gameCode).update({
+                players: gameState.players,
+                currentTurn: 0,
+                direction: 'clockwise',
+                history: gameState.history,
+                startTime: gameState.startTime,
+                gameEnded: false,
+                winner: null
+            });
+            
+            // Restart timer
+            if (timerInterval) {
+                clearInterval(timerInterval);
+            }
+            startTimer();
         }
     </script>
 </body>

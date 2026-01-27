@@ -2,7 +2,10 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Gioco del Fato</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -12,30 +15,52 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        /* Smooth scrolling */
+        html {
+            scroll-behavior: smooth;
+            -webkit-text-size-adjust: 100%;
         }
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: #0a0a0f;
             background-image: 
-                radial-gradient(circle at 20% 50%, rgba(120, 40, 200, 0.15) 0%, transparent 50%),
-                radial-gradient(circle at 80% 80%, rgba(200, 40, 120, 0.15) 0%, transparent 50%),
-                radial-gradient(circle at 40% 20%, rgba(40, 120, 200, 0.1) 0%, transparent 50%);
+                radial-gradient(circle at 20% 50%, rgba(156, 39, 176, 0.2) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(233, 30, 99, 0.2) 0%, transparent 50%),
+                radial-gradient(circle at 40% 20%, rgba(63, 81, 181, 0.15) 0%, transparent 50%);
+            background-attachment: fixed;
             color: #e8e8e8;
             min-height: 100vh;
-            padding: 10px;
+            min-height: -webkit-fill-available;
+            padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
             overflow-x: hidden;
-            transition: box-shadow 0.5s ease;
+            transition: box-shadow 0.3s ease;
+            position: relative;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        /* Rimuovere le stelle animate su mobile - troppo pesante */
+        body::before {
+            display: none;
+        }
+        
+        /* Reduce animations on devices that prefer reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
         }
         
         body.my-turn {
-            box-shadow: inset 0 0 0 5px #4ecca3, inset 0 0 30px rgba(78, 204, 163, 0.5);
-            animation: turnPulse 2s infinite;
-        }
-        
-        @keyframes turnPulse {
-            0%, 100% { box-shadow: inset 0 0 0 5px #4ecca3, inset 0 0 30px rgba(78, 204, 163, 0.5); }
-            50% { box-shadow: inset 0 0 0 8px #4ecca3, inset 0 0 50px rgba(78, 204, 163, 0.8); }
+            box-shadow: inset 0 0 0 4px #00ff88;
         }
         
         /* Screen Flash Animations */
@@ -115,44 +140,47 @@
             max-width: 600px;
             margin: 0 auto;
             padding: 15px;
+            position: relative;
+            z-index: 1;
         }
 
         h1 {
             text-align: center;
-            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 50%, #ffd700 100%);
+            background: linear-gradient(135deg, #ff00ff 0%, #00ffff 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
-            text-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
             margin-bottom: 20px;
             font-size: 2em;
             font-weight: 900;
-            letter-spacing: 2px;
+            letter-spacing: 3px;
             position: relative;
+            filter: drop-shadow(0 0 15px rgba(138, 43, 226, 0.6));
+            text-transform: uppercase;
+        }
+        
+        h1::before {
+            content: '🎲 ';
         }
         
         h1::after {
-            content: '🎲 Gioco del Fato 🎲';
-            position: absolute;
-            left: 0;
-            right: 0;
-            top: 0;
-            -webkit-text-fill-color: #ffd700;
-            z-index: -1;
-            filter: blur(20px);
-            opacity: 0.5;
+            content: ' 🎲';
         }
 
         .setup-screen, .game-screen {
-            background: rgba(20, 20, 30, 0.7);
-            border: 1px solid rgba(255, 215, 0, 0.2);
+            background: rgba(20, 20, 40, 0.92);
+            border: 2px solid rgba(255, 255, 255, 0.1);
             border-radius: 20px;
             padding: 25px;
-            box-shadow: 
-                0 8px 32px rgba(0, 0, 0, 0.5),
-                inset 0 1px 0 rgba(255, 255, 255, 0.1),
-                0 0 60px rgba(255, 215, 0, 0.1);
-            backdrop-filter: blur(20px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            transition: transform 0.2s ease;
+            position: relative;
+            will-change: transform;
+        }
+        
+        .setup-screen:active,
+        .game-screen:active {
+            transform: scale(0.99);
         }
 
         .input-group {
@@ -162,65 +190,74 @@
         label {
             display: block;
             margin-bottom: 8px;
-            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+            background: linear-gradient(135deg, #00ffff 0%, #ff00ff 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
-            font-weight: 600;
-            font-size: 0.95em;
-            letter-spacing: 0.5px;
+            font-weight: 700;
+            font-size: 1em;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            filter: drop-shadow(0 0 8px rgba(0, 255, 255, 0.6));
         }
 
         input, select {
             width: 100%;
-            padding: 14px;
-            border: 2px solid rgba(255, 215, 0, 0.3);
-            border-radius: 12px;
-            background: rgba(20, 20, 30, 0.8);
-            color: #e8e8e8;
+            padding: 16px;
+            min-height: 50px;
+            border: 2px solid rgba(0, 255, 255, 0.3);
+            border-radius: 15px;
+            background: rgba(10, 10, 30, 0.9);
+            color: #00ffff;
             font-size: 16px;
-            transition: all 0.3s ease;
-            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+            transition: all 0.4s ease;
+            box-shadow: 
+                inset 0 2px 8px rgba(0, 0, 0, 0.5),
+                0 0 0 rgba(0, 255, 255, 0);
+            font-weight: 600;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
         }
 
         input:focus, select:focus {
             outline: none;
-            border-color: #ffd700;
-            background: rgba(30, 30, 40, 0.9);
+            border-color: #00ffff;
+            background: rgba(0, 30, 50, 0.95);
             box-shadow: 
-                inset 0 2px 4px rgba(0, 0, 0, 0.3),
-                0 0 20px rgba(255, 215, 0, 0.3);
+                inset 0 2px 8px rgba(0, 0, 0, 0.5),
+                0 0 30px rgba(0, 255, 255, 0.6),
+                0 0 60px rgba(0, 255, 255, 0.3);
+            transform: translateY(-2px);
+            color: #fff;
+        }
+        
+        input::placeholder {
+            color: rgba(0, 255, 255, 0.5);
         }
 
         button {
             width: 100%;
-            padding: 16px;
-            background: linear-gradient(135deg, #d4af37 0%, #ffd700 50%, #ffed4e 100%);
-            color: #1a1a2e;
+            padding: 18px;
+            min-height: 50px;
+            background: linear-gradient(135deg, #ff00ff 0%, #00ffff 100%);
+            color: #fff;
             border: none;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 700;
+            border-radius: 15px;
+            font-size: 17px;
+            font-weight: 900;
             cursor: pointer;
-            margin-top: 10px;
-            transition: all 0.3s ease;
-            box-shadow: 
-                0 4px 15px rgba(255, 215, 0, 0.3),
-                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            margin-top: 12px;
+            transition: transform 0.2s ease, opacity 0.2s ease;
+            box-shadow: 0 4px 15px rgba(138, 43, 226, 0.4);
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 2px;
+            position: relative;
+            -webkit-tap-highlight-color: transparent;
         }
-
-        button:hover {
-            transform: translateY(-3px);
-            box-shadow: 
-                0 6px 25px rgba(255, 215, 0, 0.5),
-                inset 0 1px 0 rgba(255, 255, 255, 0.3);
-            background: linear-gradient(135deg, #ffed4e 0%, #ffd700 50%, #d4af37 100%);
-        }
-
+        
         button:active {
-            transform: translateY(-1px);
+            transform: scale(0.97);
+            opacity: 0.9;
         }
 
         button:disabled {
@@ -228,6 +265,7 @@
             cursor: not-allowed;
             transform: none;
             box-shadow: none;
+            opacity: 0.5;
         }
 
         .player-input {
@@ -249,8 +287,8 @@
 
         #qrcode-container {
             text-align: center;
-            margin: 25px 0;
-            padding: 25px;
+            margin: 20px 0;
+            padding: 20px;
             background: linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%);
             border-radius: 15px;
             box-shadow: 
@@ -260,6 +298,15 @@
 
         #qrcode {
             display: inline-block;
+            max-width: 100%;
+            height: auto;
+        }
+        
+        #qrcode canvas,
+        #qrcode img {
+            max-width: 100% !important;
+            height: auto !important;
+            width: auto !important;
         }
 
         .share-link {
@@ -285,43 +332,28 @@
         }
 
         .player-card {
-            background: linear-gradient(135deg, rgba(30, 30, 45, 0.9) 0%, rgba(20, 20, 35, 0.8) 100%);
+            background: linear-gradient(135deg, rgba(40, 20, 60, 0.9) 0%, rgba(20, 10, 40, 0.85) 100%);
             border-radius: 15px;
             padding: 18px;
             margin-bottom: 12px;
-            border: 2px solid rgba(255, 215, 0, 0.2);
-            border-left: 5px solid rgba(100, 100, 150, 0.5);
-            transition: all 0.4s ease;
-            box-shadow: 
-                0 4px 15px rgba(0, 0, 0, 0.3),
-                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(138, 43, 226, 0.3);
+            border-left: 5px solid rgba(138, 43, 226, 0.6);
+            transition: transform 0.2s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+            position: relative;
+        }
+        
+        .player-card:active {
+            transform: scale(0.98);
         }
 
         .player-card.active-turn {
-            border: 2px solid #ffd700;
-            border-left: 5px solid #ffd700;
-            background: linear-gradient(135deg, rgba(255, 215, 0, 0.15) 0%, rgba(255, 237, 78, 0.1) 100%);
+            border-left-color: #00ff88;
+            border-left-width: 6px;
+            background: linear-gradient(135deg, rgba(0, 100, 60, 0.3) 0%, rgba(0, 50, 40, 0.25) 100%);
             box-shadow: 
-                0 0 30px rgba(255, 215, 0, 0.4),
-                inset 0 0 20px rgba(255, 215, 0, 0.1),
-                0 4px 15px rgba(0, 0, 0, 0.3);
-            animation: pulse 2s infinite;
-            transform: scale(1.02);
-        }
-
-        @keyframes pulse {
-            0%, 100% { 
-                box-shadow: 
-                    0 0 30px rgba(255, 215, 0, 0.4),
-                    inset 0 0 20px rgba(255, 215, 0, 0.1),
-                    0 4px 15px rgba(0, 0, 0, 0.3);
-            }
-            50% { 
-                box-shadow: 
-                    0 0 45px rgba(255, 215, 0, 0.6),
-                    inset 0 0 30px rgba(255, 215, 0, 0.2),
-                    0 6px 20px rgba(0, 0, 0, 0.3);
-            }
+                0 4px 20px rgba(0, 255, 136, 0.4),
+                inset 0 0 20px rgba(0, 255, 136, 0.15);
         }
 
         .player-card.eliminated {
@@ -336,27 +368,31 @@
         }
 
         .player-name {
-            font-weight: 700;
-            font-size: 1.15em;
-            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+            font-weight: 800;
+            font-size: 1.2em;
+            background: linear-gradient(135deg, #00ffff 0%, #ff00ff 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
             letter-spacing: 0.5px;
+            filter: drop-shadow(0 0 8px rgba(0, 255, 255, 0.5));
+            word-wrap: break-word;
+            line-height: 1.3;
+            margin-bottom: 8px;
         }
 
         .player-hp {
-            font-size: 1.6em;
-            font-weight: 800;
-            color: #4ecca3;
-            text-shadow: 0 0 15px rgba(78, 204, 163, 0.6);
+            font-size: 1.8em;
+            font-weight: 900;
+            color: #00ff88;
+            text-shadow: 0 0 20px rgba(0, 255, 136, 0.8), 0 0 40px rgba(0, 255, 136, 0.4);
             letter-spacing: 1px;
         }
 
         .player-hp.low {
-            color: #ff6b6b;
-            text-shadow: 0 0 15px rgba(255, 107, 107, 0.6);
-            animation: warning-pulse 1.5s infinite;
+            color: #ff0066;
+            text-shadow: 0 0 20px rgba(255, 0, 102, 0.8), 0 0 40px rgba(255, 0, 102, 0.4);
+            animation: warning-pulse 1s infinite;
         }
         
         @keyframes warning-pulse {
@@ -389,42 +425,54 @@
 
         .dice-input input {
             text-align: center;
-            font-size: 1.8em;
-            font-weight: 800;
-            background: rgba(10, 10, 20, 0.9);
-            border: 3px solid rgba(255, 215, 0, 0.4);
-            color: #ffd700;
-            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+            font-size: 2em;
+            font-weight: 900;
+            background: linear-gradient(135deg, rgba(10, 10, 40, 0.95) 0%, rgba(30, 10, 60, 0.9) 100%);
+            border: 3px solid rgba(0, 255, 255, 0.5);
+            border-radius: 15px;
+            color: #00ffff;
+            text-shadow: 0 0 15px rgba(0, 255, 255, 0.8);
+            box-shadow: 
+                0 4px 15px rgba(0, 0, 0, 0.5),
+                inset 0 2px 8px rgba(0, 0, 0, 0.6),
+                0 0 20px rgba(0, 255, 255, 0.2);
+            transition: all 0.3s ease;
         }
         
         .dice-input input:focus {
-            border-color: #ffd700;
+            border-color: #ff00ff;
+            background: linear-gradient(135deg, rgba(30, 10, 60, 1) 0%, rgba(60, 10, 80, 0.95) 100%);
+            color: #ff00ff;
+            text-shadow: 0 0 20px rgba(255, 0, 255, 1);
             box-shadow: 
-                inset 0 2px 4px rgba(0, 0, 0, 0.3),
-                0 0 25px rgba(255, 215, 0, 0.5);
+                0 6px 20px rgba(255, 0, 255, 0.4),
+                inset 0 2px 8px rgba(0, 0, 0, 0.6),
+                0 0 40px rgba(255, 0, 255, 0.4);
+            transform: scale(1.1) rotate(2deg);
         }
 
         .result-display {
-            background: linear-gradient(135deg, rgba(255, 215, 0, 0.15) 0%, rgba(255, 237, 78, 0.1) 100%);
-            border: 3px solid #ffd700;
+            background: linear-gradient(135deg, rgba(138, 43, 226, 0.25) 0%, rgba(75, 0, 130, 0.15) 100%);
+            border: 3px solid #ff00ff;
             border-radius: 15px;
             padding: 20px;
             margin: 15px 0;
             text-align: center;
-            box-shadow: 
-                0 0 30px rgba(255, 215, 0, 0.3),
-                inset 0 0 20px rgba(255, 215, 0, 0.1);
+            box-shadow: 0 0 25px rgba(255, 0, 255, 0.3);
+            position: relative;
         }
 
         .result-display h3 {
-            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+            background: linear-gradient(135deg, #ff00ff 0%, #00ffff 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
             margin-bottom: 12px;
-            font-size: 1.3em;
-            font-weight: 700;
-            text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+            font-size: 1.4em;
+            font-weight: 900;
+            filter: drop-shadow(0 0 8px rgba(255, 0, 255, 0.5));
+            position: relative;
+            z-index: 1;
         }
 
         .history {
@@ -515,11 +563,22 @@
         .timer {
             text-align: center;
             font-size: 1.3em;
-            font-weight: 700;
-            color: #4ecca3;
-            text-shadow: 0 0 20px rgba(78, 204, 163, 0.6);
-            margin: 10px 0;
+            font-weight: 800;
+            background: linear-gradient(135deg, rgba(138, 43, 226, 0.3) 0%, rgba(75, 0, 130, 0.2) 100%);
+            border: 2px solid rgba(138, 43, 226, 0.5);
+            border-radius: 15px;
+            padding: 12px 20px;
+            margin: 15px 0;
+            color: #ff00ff;
+            text-shadow: 0 0 15px rgba(255, 0, 255, 0.6);
+            box-shadow: 
+                0 0 20px rgba(138, 43, 226, 0.3),
+                inset 0 0 15px rgba(138, 43, 226, 0.1);
             letter-spacing: 2px;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .master-controls {
@@ -559,18 +618,38 @@
 
         .hp-modifier {
             display: flex;
+            flex-direction: column;
             gap: 10px;
             margin: 10px 0;
         }
 
         .hp-modifier input {
-            flex: 1;
+            width: 100%;
+            font-size: 22px !important;
+            padding: 20px !important;
+            min-height: 65px !important;
+            border: 3px solid rgba(0, 255, 255, 0.5) !important;
+            background: rgba(10, 10, 30, 0.95) !important;
+            color: #00ffff !important;
+            border-radius: 12px !important;
+            text-align: center;
+            font-weight: bold;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        
+        .hp-modifier input:focus {
+            outline: none;
+            border-color: #ff00ff !important;
+            box-shadow: 0 0 20px rgba(255, 0, 255, 0.5);
         }
 
         .hp-modifier button {
-            width: auto;
-            padding: 10px 15px;
+            width: 100%;
+            padding: 16px 15px;
             margin: 0;
+            min-height: 55px;
+            font-size: 16px;
         }
 
         .hidden {
@@ -678,19 +757,324 @@
             letter-spacing: 1px;
             box-shadow: 0 4px 15px rgba(255, 215, 0, 0.1);
         }
+        
+        /* QR Code Modal */
+        .qr-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 3000;
+            padding: 20px;
+        }
+        
+        .qr-modal.show {
+            display: flex;
+        }
+        
+        .qr-modal-content {
+            background: linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%);
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 90%;
+            max-height: 90%;
+            overflow-y: auto;
+            box-shadow: 0 10px 50px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            position: relative;
+        }
+        
+        .qr-modal-content h2 {
+            color: #1a1a2e;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+        
+        .qr-modal-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 40px;
+            height: 40px;
+            background: #ff0066;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s ease;
+        }
+        
+        .qr-modal-close:active {
+            transform: scale(0.9);
+        }
+        
+        .qr-modal #qrcode-modal {
+            display: inline-block;
+            margin: 20px 0;
+        }
+        
+        .qr-modal .share-info {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(138, 43, 226, 0.1);
+            border: 2px solid rgba(138, 43, 226, 0.3);
+            border-radius: 12px;
+            color: #1a1a2e;
+            font-weight: 600;
+        }
+        
+        .qr-modal .game-code {
+            font-size: 1.5em;
+            color: #ff00ff;
+            font-weight: 900;
+            margin: 10px 0;
+            letter-spacing: 2px;
+        }
 
         @media (max-width: 480px) {
-            h1 { font-size: 1.5em; }
-            .player-card { padding: 10px; }
-            .dice-inputs { gap: 5px; }
-            .control-group { grid-template-columns: 1fr; }
+            body {
+                padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+            }
+            
+            /* Fix per iOS - evita elementi che spariscono durante scroll */
+            .player-card,
+            .setup-screen,
+            .game-screen,
+            button,
+            input,
+            select {
+                -webkit-transform: translate3d(0, 0, 0);
+                transform: translate3d(0, 0, 0);
+                backface-visibility: hidden;
+                -webkit-backface-visibility: hidden;
+            }
+            
+            .container {
+                padding: 8px;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            h1 { 
+                font-size: 1.6em;
+                letter-spacing: 2px;
+                margin-bottom: 15px;
+            }
+            
+            h1::before,
+            h1::after {
+                font-size: 0.8em;
+            }
+            
+            .setup-screen, .game-screen {
+                padding: 18px 15px;
+                border-radius: 18px;
+            }
+            
+            label {
+                font-size: 0.9em;
+                margin-bottom: 6px;
+            }
+            
+            input, select {
+                padding: 14px 12px;
+                font-size: 16px;
+                border-radius: 12px;
+            }
+            
+            button {
+                padding: 16px 14px;
+                font-size: 15px;
+                letter-spacing: 1.5px;
+                margin-top: 10px;
+            }
+            
+            .player-card { 
+                padding: 14px 12px;
+                margin-bottom: 10px;
+                border-radius: 12px;
+            }
+            
+            .player-name {
+                font-size: 1.1em !important;
+            }
+            
+            .player-hp {
+                font-size: 1.5em !important;
+            }
+            
+            .dice-inputs { 
+                gap: 8px;
+                justify-content: center;
+            }
+            
+            .dice-input {
+                min-width: 70px;
+                flex: 0 1 70px;
+            }
+            
+            .dice-input input {
+                font-size: 1.6em;
+                padding: 12px 8px;
+                height: 70px;
+            }
+            
+            .control-group { 
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
             
             .winner-notification {
-                padding: 40px 30px;
+                padding: 30px 20px;
+                min-width: 280px;
             }
             
             .winner-notification h2 {
-                font-size: 2.2em;
+                font-size: 1.8em;
+            }
+            
+            .eliminated-notification {
+                padding: 30px 20px;
+                min-width: 280px;
+            }
+            
+            .eliminated-notification h2 {
+                font-size: 2em;
+            }
+            
+            .result-display {
+                padding: 16px 12px;
+                border-radius: 12px;
+            }
+            
+            .result-display h3 {
+                font-size: 1.15em;
+            }
+            
+            .dice-result {
+                width: 40px;
+                height: 40px;
+                line-height: 40px;
+                font-size: 20px;
+                margin: 0 3px;
+            }
+            
+            .history {
+                max-height: 200px;
+                padding: 12px 12px 12px 20px;
+                margin: 12px 0;
+            }
+            
+            .history-item {
+                padding: 10px 10px 10px 15px;
+                margin-bottom: 8px;
+                font-size: 0.85em;
+            }
+            
+            .timer {
+                font-size: 1.1em;
+                padding: 10px 15px;
+                margin: 12px 0;
+            }
+            
+            .direction-indicator {
+                padding: 10px;
+                font-size: 0.95em;
+                margin: 8px 0;
+            }
+            
+            #current-turn {
+                font-size: 1.05em;
+                margin: 12px 0;
+            }
+            
+            .dice-calculator h3 {
+                font-size: 1.1em;
+                margin-bottom: 12px;
+            }
+            
+            .master-controls h3 {
+                font-size: 1.1em;
+            }
+            
+            .qrcode-container {
+                padding: 20px;
+            }
+            
+            #qrcode canvas {
+                max-width: 100%;
+                height: auto !important;
+                width: auto !important;
+            }
+            
+            /* Miglioramenti touch per mobile */
+            button,
+            input,
+            select,
+            .dice-input input {
+                touch-action: manipulation;
+            }
+            
+            /* Testo più leggibile */
+            .player-card,
+            .history-item,
+            .result-display {
+                line-height: 1.5;
+            }
+        }
+        
+        /* Extra small devices */
+        @media (max-width: 360px) {
+            h1 {
+                font-size: 1.5em;
+            }
+            
+            .dice-input {
+                min-width: 60px;
+                flex: 0 1 60px;
+            }
+            
+            .dice-input input {
+                font-size: 1.4em;
+                height: 60px;
+            }
+            
+            button {
+                font-size: 14px;
+                padding: 14px 12px;
+            }
+        }
+        
+        /* Landscape mode on mobile */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .container {
+                padding: 5px;
+            }
+            
+            h1 {
+                font-size: 1.3em;
+                margin-bottom: 8px;
+            }
+            
+            .setup-screen, .game-screen {
+                padding: 12px;
+            }
+            
+            .player-card {
+                padding: 10px;
+                margin-bottom: 8px;
+            }
+            
+            input, select, button {
+                padding: 10px;
             }
         }
 
@@ -949,6 +1333,85 @@
                     <button id="reverse-direction-btn">🔄 Inverti Direzione</button>
                     <button id="rollback-btn">↩️ Annulla Ultima</button>
                 </div>
+                
+                <div class="input-group">
+                    <label>Mostra QR Code per Rientro</label>
+                    <select id="qr-player-select"></select>
+                    <button id="show-qr-btn">📱 Mostra QR Code</button>
+                </div>
+                
+                <div class="input-group">
+                    <label>Immortalità (seleziona uno o più giocatori - Ctrl/Cmd per multipli)</label>
+                    <select id="immortal-players" multiple size="5"></select>
+                    <button id="toggle-immortality-btn">⭐ Attiva/Disattiva Immortalità</button>
+                </div>
+                
+                <div class="input-group">
+                    <label>Moltiplicatore Danni/Cure (seleziona uno o più giocatori)</label>
+                    <select id="multiplier-players" multiple size="5"></select>
+                    <div class="hp-modifier">
+                        <button id="set-multiplier-half-btn" style="background: linear-gradient(135deg, #1a4d1a 0%, #2d7a2d 100%);">🛡️ Metà Danni (x0.5)</button>
+                        <button id="set-multiplier-double-btn" style="background: linear-gradient(135deg, #4d1a1a 0%, #7a2d2d 100%);">⚔️ Danni Doppi (x2)</button>
+                        <button id="remove-multiplier-btn" style="background: #dc3545;">❌ Rimuovi</button>
+                    </div>
+                    <div style="font-size: 0.85em; color: #aaa; margin-top: 8px; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                        💡 Il moltiplicatore dura fino al prossimo turno di chi lo ha applicato
+                    </div>
+                </div>
+                
+                <div class="input-group">
+                    <label>Salta Turno (seleziona uno o più giocatori)</label>
+                    <select id="skip-turn-players" multiple size="5"></select>
+                    <button id="toggle-skip-turn-btn">⏭️ Attiva/Disattiva Salta Turno</button>
+                </div>
+                
+                <div class="input-group">
+                    <label>Marchio del Kraken 🐙 (seleziona uno o più giocatori)</label>
+                    <select id="kraken-mark-players" multiple size="5"></select>
+                    <button id="toggle-kraken-mark-btn" style="background: linear-gradient(135deg, #1a0033 0%, #330066 100%); border: 2px solid #9933ff;">🐙 Attiva/Disattiva Marchio</button>
+                    <div style="font-size: 0.85em; color: #ff6b6b; margin-top: 8px; padding: 8px; background: rgba(255,0,0,0.1); border-radius: 8px; border: 1px solid rgba(255,0,0,0.3);">
+                        ⚠️ <strong>Effetto permanente:</strong> Eliminazione automatica a 10 HP o meno
+                    </div>
+                </div>
+                
+                <div class="input-group">
+                    <label>Scacco Matto ♟️ (seleziona uno o più giocatori)</label>
+                    <select id="checkmate-players" multiple size="5"></select>
+                    <div class="hp-modifier">
+                        <input type="number" id="checkmate-value" placeholder="HP di eliminazione" min="1" max="100" value="30">
+                        <button id="set-checkmate-btn" style="background: linear-gradient(135deg, #1a0033 0%, #4d0000 100%); border: 2px solid #ff3333;">♟️ Imposta Scacco Matto</button>
+                        <button id="remove-checkmate-btn" style="background: #dc3545;">❌ Rimuovi</button>
+                    </div>
+                    <div style="font-size: 0.85em; color: #ff6b6b; margin-top: 8px; padding: 8px; background: rgba(255,0,0,0.1); border-radius: 8px; border: 1px solid rgba(255,0,0,0.3);">
+                        ⚠️ <strong>Effetto permanente:</strong> Eliminazione automatica al valore HP specificato
+                    </div>
+                </div>
+                
+                <div class="input-group">
+                    <label>Scacco Matto ♟️ (seleziona uno o più giocatori)</label>
+                    <select id="checkmate-players" multiple size="5"></select>
+                    <div class="hp-modifier">
+                        <input type="number" id="checkmate-value" placeholder="HP per eliminazione (es: 30, 40, 50)" min="1" max="100" value="30">
+                        <button id="set-checkmate-btn" style="background: linear-gradient(135deg, #4a0000 0%, #8b0000 100%); border: 2px solid #ff0000;">♟️ Imposta Scacco Matto</button>
+                        <button id="remove-checkmate-btn" style="background: #dc3545;">❌ Rimuovi</button>
+                    </div>
+                    <div style="font-size: 0.85em; color: #ff6b6b; margin-top: 8px; padding: 8px; background: rgba(255,0,0,0.1); border-radius: 8px; border: 1px solid rgba(255,0,0,0.3);">
+                        ⚠️ <strong>Effetto permanente:</strong> Morte istantanea al raggiungimento del valore HP impostato
+                    </div>
+                </div>
+                
+                <div class="input-group">
+                    <label>Dadi Personalizzati (seleziona uno o più giocatori)</label>
+                    <select id="custom-dice-players" multiple size="5"></select>
+                    <div class="hp-modifier">
+                        <input type="number" id="custom-dice-value" placeholder="Numero dadi (1-6)" min="1" max="6" value="3">
+                        <button id="set-custom-dice-btn">🎲 Imposta Dadi</button>
+                        <button id="remove-custom-dice-btn" style="background: #dc3545;">❌ Rimuovi</button>
+                    </div>
+                    <div style="font-size: 0.85em; color: #aaa; margin-top: 8px; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                        💡 I dadi personalizzati durano solo per il prossimo turno del giocatore
+                    </div>
+                </div>
 
                 <div class="input-group">
                     <label>Cambia Turno</label>
@@ -957,16 +1420,10 @@
                 </div>
 
                 <div class="input-group">
-                    <label>Numero di Dadi</label>
-                    <input type="number" id="dice-count" min="1" max="4" value="3">
-                    <button id="update-dice-btn">Aggiorna Dadi</button>
-                </div>
-
-                <div class="input-group">
                     <label>Modifica HP Giocatori (tieni premuto Ctrl/Cmd per selezionare multipli)</label>
                     <select id="target-players" multiple size="5"></select>
                     <div class="hp-modifier">
-                        <input type="number" id="hp-amount" placeholder="Valore HP" style="font-size: 18px; padding: 16px;">
+                        <input type="number" id="hp-amount" placeholder="Valore HP">
                         <button id="damage-btn">💥 Danno</button>
                         <button id="heal-btn">💚 Cura</button>
                     </div>
@@ -987,17 +1444,31 @@
         </div>
     </div>
 
+    <!-- QR Code Modal -->
+    <div id="qr-modal" class="qr-modal">
+        <div class="qr-modal-content">
+            <button class="qr-modal-close" id="qr-modal-close">×</button>
+            <h2>📱 QR Code Partita</h2>
+            <div id="qrcode-modal"></div>
+            <div class="share-info">
+                <p><strong>Codice Partita:</strong></p>
+                <div class="game-code" id="modal-game-code"></div>
+                <p style="margin-top: 10px; font-size: 0.9em;">Scansiona il QR code o inserisci il codice per entrare</p>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Firebase Configuration
         const firebaseConfig = {
-            apiKey: "AIzaSyBM8I3r7kVhQGYoYKtxDCOxjqUdGPBKGzk",
-            authDomain: "gioco-del-fato.firebaseapp.com",
-            databaseURL: "https://gioco-del-fato-default-rtdb.europe-west1.firebasedatabase.app",
-            projectId: "gioco-del-fato",
-            storageBucket: "gioco-del-fato.firebasestorage.app",
-            messagingSenderId: "642126871917",
-            appId: "1:642126871917:web:a4d6c5e8f9b0c1d2e3f4g5"
-        };
+  apiKey: "AIzaSyAv1tYe2jwc3abq128Ci5PvJK1HTTuF3tY",
+  authDomain: "gioco-del-fato.firebaseapp.com",
+  databaseURL: "https://gioco-del-fato-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "gioco-del-fato",
+  storageBucket: "gioco-del-fato.firebasestorage.app",
+  messagingSenderId: "358068623557",
+  appId: "1:358068623557:web:dad9bbba9da419e186f8ac"
+};
 
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
@@ -1031,23 +1502,51 @@
         document.getElementById('reverse-direction-btn')?.addEventListener('click', reverseDirection);
         document.getElementById('rollback-btn')?.addEventListener('click', rollbackLastTurn);
         document.getElementById('change-turn-btn')?.addEventListener('click', changeTurn);
-        document.getElementById('update-dice-btn')?.addEventListener('click', updateDiceCount);
         document.getElementById('damage-btn')?.addEventListener('click', () => modifyHP('damage'));
         document.getElementById('heal-btn')?.addEventListener('click', () => modifyHP('heal'));
         document.getElementById('revive-btn')?.addEventListener('click', revivePlayer);
         document.getElementById('swap-hp-btn')?.addEventListener('click', swapHP);
         document.getElementById('end-game-btn')?.addEventListener('click', endGame);
         document.getElementById('new-game-btn')?.addEventListener('click', newGame);
+        document.getElementById('show-qr-btn')?.addEventListener('click', showQRModal);
+        document.getElementById('qr-modal-close')?.addEventListener('click', closeQRModal);
+        document.getElementById('toggle-immortality-btn')?.addEventListener('click', toggleImmortality);
+        document.getElementById('set-multiplier-half-btn')?.addEventListener('click', () => setMultiplier(0.5));
+        document.getElementById('set-multiplier-double-btn')?.addEventListener('click', () => setMultiplier(2));
+        document.getElementById('remove-multiplier-btn')?.addEventListener('click', removeMultiplier);
+        document.getElementById('toggle-skip-turn-btn')?.addEventListener('click', toggleSkipTurn);
+        document.getElementById('set-custom-dice-btn')?.addEventListener('click', setCustomDice);
+        document.getElementById('remove-custom-dice-btn')?.addEventListener('click', removeCustomDice);
+        document.getElementById('toggle-kraken-mark-btn')?.addEventListener('click', toggleKrakenMark);
+        document.getElementById('set-checkmate-btn')?.addEventListener('click', setCheckmate);
+        document.getElementById('remove-checkmate-btn')?.addEventListener('click', removeCheckmate);
+        document.getElementById('set-checkmate-btn')?.addEventListener('click', setCheckmate);
+        document.getElementById('remove-checkmate-btn')?.addEventListener('click', removeCheckmate);
+        
+        // Close modal clicking outside
+        document.getElementById('qr-modal')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeQRModal();
+            }
+        });
 
         // Auto-detect role from URL parameter
         const urlParams = new URLSearchParams(window.location.search);
         const gameCode = urlParams.get('game');
+        const playerNameFromURL = urlParams.get('player');
         
         if (gameCode) {
             // Player joining via QR code
             document.getElementById('player-join').classList.remove('hidden');
             document.getElementById('display-game-code').textContent = gameCode;
             loadAvailablePlayers(gameCode);
+            
+            // Auto-join if player name is in URL
+            if (playerNameFromURL) {
+                setTimeout(() => {
+                    joinGame();
+                }, 500);
+            }
         } else {
             // Master creating new game
             document.getElementById('master-setup').classList.remove('hidden');
@@ -1120,12 +1619,50 @@
                 return;
             }
 
-            const players = [{ name: masterName, hp: initialHP, isEliminated: false, isMaster: true, connected: true }];
+            const players = [{ 
+                name: masterName, 
+                hp: initialHP, 
+                isEliminated: false, 
+                isMaster: true, 
+                connected: true, 
+                isImmortal: false, 
+                multiplier: 1,
+                multiplierAppliedBy: null,
+                skipTurn: false,
+                customDiceCount: null,
+                krakenMark: false,
+                checkmateHP: null,
+                temporaryEffects: {
+                    immortal: false,
+                    multiplier: false,
+                    skipTurn: false,
+                    customDice: false
+                }
+            }];
             
             for (let i = 1; i < numPlayers; i++) {
                 const playerName = document.getElementById(`player-${i}`).value.trim();
                 if (playerName) {
-                    players.push({ name: playerName, hp: initialHP, isEliminated: false, isMaster: false, connected: false });
+                    players.push({ 
+                        name: playerName, 
+                        hp: initialHP, 
+                        isEliminated: false, 
+                        isMaster: false, 
+                        connected: false, 
+                        isImmortal: false, 
+                        multiplier: 1,
+                        multiplierAppliedBy: null,
+                        skipTurn: false,
+                        customDiceCount: null,
+                        krakenMark: false,
+                        checkmateHP: null,
+                        temporaryEffects: {
+                            immortal: false,
+                            multiplier: false,
+                            skipTurn: false,
+                            customDice: false
+                        }
+                    });
                 }
             }
 
@@ -1178,9 +1715,17 @@
         }
 
         function joinGame() {
-            const playerName = document.getElementById('player-name-select').value;
             const urlParams = new URLSearchParams(window.location.search);
             const code = urlParams.get('game');
+            const playerNameFromURL = urlParams.get('player');
+            
+            // If player name is in URL, use it directly
+            let playerName = playerNameFromURL;
+            
+            // Otherwise get from select
+            if (!playerName) {
+                playerName = document.getElementById('player-name-select').value;
+            }
 
             if (!playerName || !code) {
                 alert('Seleziona il tuo nome!');
@@ -1195,19 +1740,17 @@
 
                 const gameData = snapshot.val();
                 
-                // Check if name is already taken by another connected player
-                const playerAlreadyJoined = gameData.players.find(p => p.name === playerName && p.connected);
-                if (playerAlreadyJoined) {
-                    alert('Questo nome è già stato preso da un altro giocatore!');
+                // Find player by name (regardless of connection status)
+                const playerIndex = gameData.players.findIndex(p => p.name === playerName);
+                
+                if (playerIndex < 0) {
+                    alert('Giocatore non trovato in questa partita!');
                     return;
                 }
 
-                // Mark player as connected
-                const playerIndex = gameData.players.findIndex(p => p.name === playerName);
-                if (playerIndex >= 0) {
-                    gameData.players[playerIndex].connected = true;
-                    database.ref('games/' + code + '/players/' + playerIndex).update({ connected: true });
-                }
+                // Mark player as connected (reconnection allowed)
+                gameData.players[playerIndex].connected = true;
+                database.ref('games/' + code + '/players/' + playerIndex).update({ connected: true });
 
                 gameState.gameCode = code;
                 gameState.isMaster = false;
@@ -1312,10 +1855,16 @@
                 
                 card.innerHTML = `
                     <div class="player-info">
-                        <div class="player-name">${player.name}${player.isMaster ? ' 👑' : ''}</div>
+                        <div class="player-name">${player.name}${player.isMaster ? ' 👑' : ''}${player.isImmortal ? ' ⭐' : ''}${player.multiplier > 1 ? ' ✨x' + player.multiplier : ''}${player.skipTurn ? ' ⏭️' : ''}${player.customDiceCount ? ' 🎲×' + player.customDiceCount : ''}${player.krakenMark ? ' 🐙' : ''}${player.checkmateHP ? ' ♟️' : ''}</div>
                         <div class="player-hp ${hpClass}">${player.hp} HP</div>
                     </div>
                     ${player.isEliminated ? '<div style="color: #dc3545; margin-top: 5px;">☠️ Eliminato</div>' : ''}
+                    ${player.isImmortal ? '<div style="color: #ffd700; margin-top: 5px;">⭐ Immortale' + (player.temporaryEffects?.immortal ? ' (temp)' : '') + '</div>' : ''}
+                    ${player.multiplier > 1 || player.multiplier < 1 ? '<div style="color: #ff00ff; margin-top: 5px;">✨ Moltiplicatore x' + player.multiplier + (player.temporaryEffects?.multiplier ? ' (temp)' : '') + '</div>' : ''}
+                    ${player.skipTurn ? '<div style="color: #ff9800; margin-top: 5px;">⏭️ Salta Turno' + (player.temporaryEffects?.skipTurn ? ' (temp)' : '') + '</div>' : ''}
+                    ${player.customDiceCount ? '<div style="color: #00ffff; margin-top: 5px;">🎲 Dadi: ' + player.customDiceCount + ' (temp)</div>' : ''}
+                    ${player.krakenMark ? '<div style="color: #9933ff; margin-top: 5px; font-weight: bold;">🐙 Marchio del Kraken (≤10 HP = morte)</div>' : ''}
+                    ${player.checkmateHP ? '<div style="color: #ff0000; margin-top: 5px; font-weight: bold;">♟️ Scacco Matto (' + player.checkmateHP + ' HP = morte)</div>' : ''}
                 `;
                 
                 container.appendChild(card);
@@ -1406,11 +1955,23 @@
             const container = document.getElementById('dice-inputs');
             container.innerHTML = '';
             
-            for (let i = 0; i < gameState.diceCount; i++) {
+            // Check if current player has custom dice count
+            const currentPlayer = gameState.players[gameState.currentTurn];
+            const diceCount = currentPlayer?.customDiceCount || gameState.diceCount;
+            
+            for (let i = 0; i < diceCount; i++) {
                 const div = document.createElement('div');
                 div.className = 'dice-input';
                 div.innerHTML = `<input type="number" min="1" max="6" id="dice-${i}" placeholder="D${i + 1}">`;
                 container.appendChild(div);
+            }
+            
+            // Show indicator if using custom dice
+            if (currentPlayer?.customDiceCount) {
+                const indicator = document.createElement('div');
+                indicator.style.cssText = 'color: #00ffff; font-size: 0.9em; margin-top: 10px; text-align: center;';
+                indicator.textContent = `🎲 Dadi personalizzati: ${currentPlayer.customDiceCount} (questo turno)`;
+                container.appendChild(indicator);
             }
         }
 
@@ -1461,8 +2022,106 @@
                     swapSelect2.appendChild(option2);
                 });
             }
-
-            document.getElementById('dice-count').value = gameState.diceCount;
+            
+            // Update QR player select
+            const qrSelect = document.getElementById('qr-player-select');
+            if (qrSelect) {
+                qrSelect.innerHTML = '';
+                
+                gameState.players.forEach((player, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = player.name;
+                    qrSelect.appendChild(option);
+                });
+            }
+            
+            // Update immortality select
+            const immortalSelect = document.getElementById('immortal-players');
+            if (immortalSelect) {
+                immortalSelect.innerHTML = '';
+                
+                gameState.players.forEach((player, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = player.name + (player.isImmortal ? ' ⭐' : '');
+                    if (player.isImmortal) {
+                        option.selected = true;
+                    }
+                    immortalSelect.appendChild(option);
+                });
+            }
+            
+            // Update multiplier select
+            const multiplierSelect = document.getElementById('multiplier-players');
+            if (multiplierSelect) {
+                multiplierSelect.innerHTML = '';
+                
+                gameState.players.forEach((player, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = player.name + (player.multiplier > 1 ? ' ✨x' + player.multiplier : '');
+                    multiplierSelect.appendChild(option);
+                });
+            }
+            
+            // Update skip turn select
+            const skipTurnSelect = document.getElementById('skip-turn-players');
+            if (skipTurnSelect) {
+                skipTurnSelect.innerHTML = '';
+                
+                gameState.players.forEach((player, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = player.name + (player.skipTurn ? ' ⏭️' : '');
+                    if (player.skipTurn) {
+                        option.selected = true;
+                    }
+                    skipTurnSelect.appendChild(option);
+                });
+            }
+            
+            // Update custom dice select
+            const customDiceSelect = document.getElementById('custom-dice-players');
+            if (customDiceSelect) {
+                customDiceSelect.innerHTML = '';
+                
+                gameState.players.forEach((player, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = player.name + (player.customDiceCount ? ' 🎲×' + player.customDiceCount : '');
+                    customDiceSelect.appendChild(option);
+                });
+            }
+            
+            // Update kraken mark select
+            const krakenMarkSelect = document.getElementById('kraken-mark-players');
+            if (krakenMarkSelect) {
+                krakenMarkSelect.innerHTML = '';
+                
+                gameState.players.forEach((player, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = player.name + (player.krakenMark ? ' 🐙' : '');
+                    if (player.krakenMark) {
+                        option.selected = true;
+                    }
+                    krakenMarkSelect.appendChild(option);
+                });
+            }
+            
+            // Update checkmate select
+            const checkmateSelect = document.getElementById('checkmate-players');
+            if (checkmateSelect) {
+                checkmateSelect.innerHTML = '';
+                
+                gameState.players.forEach((player, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = player.name + (player.checkmateHP ? ' ♟️' + player.checkmateHP : '');
+                    checkmateSelect.appendChild(option);
+                });
+            }
         }
 
         function calculateDice() {
@@ -1478,9 +2137,16 @@
                 alert('Il giocatore corrente è eliminato!');
                 return;
             }
+            
+            if (currentPlayer.skipTurn) {
+                alert('Questo giocatore deve saltare il turno!');
+                return;
+            }
 
             const diceValues = [];
-            for (let i = 0; i < gameState.diceCount; i++) {
+            const diceCount = currentPlayer.customDiceCount || gameState.diceCount;
+            
+            for (let i = 0; i < diceCount; i++) {
                 const value = parseInt(document.getElementById(`dice-${i}`).value);
                 if (!value || value < 1 || value > 6) {
                     alert('Inserisci valori validi per tutti i dadi (1-6)!');
@@ -1554,17 +2220,27 @@
             if (count === 0) count = activePlayers.length;
 
             if (gameState.direction === 'clockwise') {
-                let currentPos = activePlayers.findIndex(({ index }) => index > shooterIndex);
-                if (currentPos === -1) currentPos = 0;
+                // Senso orario: ordina per index crescente, partendo da dopo lo shooter
+                const sorted = [...activePlayers].sort((a, b) => {
+                    // Metti prima quelli dopo lo shooter, poi quelli prima
+                    const aAfter = a.index > shooterIndex ? a.index : a.index + 1000;
+                    const bAfter = b.index > shooterIndex ? b.index : b.index + 1000;
+                    return aAfter - bAfter;
+                });
                 
-                const targetPos = (currentPos + count - 1) % activePlayers.length;
-                return activePlayers[targetPos].index;
+                const targetPos = (count - 1) % sorted.length;
+                return sorted[targetPos].index;
             } else {
-                let currentPos = activePlayers.findIndex(({ index }) => index < shooterIndex);
-                if (currentPos === -1) currentPos = activePlayers.length - 1;
+                // Senso antiorario: ordina per index decrescente, partendo da prima dello shooter
+                const sorted = [...activePlayers].sort((a, b) => {
+                    // Metti prima quelli prima dello shooter, poi quelli dopo (ma in ordine inverso)
+                    const aValue = a.index < shooterIndex ? (shooterIndex - a.index) : (shooterIndex + gameState.players.length - a.index);
+                    const bValue = b.index < shooterIndex ? (shooterIndex - b.index) : (shooterIndex + gameState.players.length - b.index);
+                    return aValue - bValue;
+                });
                 
-                const targetPos = (currentPos - count + 1 + activePlayers.length) % activePlayers.length;
-                return activePlayers[targetPos].index;
+                const targetPos = (count - 1) % sorted.length;
+                return sorted[targetPos].index;
             }
         }
 
@@ -1658,56 +2334,125 @@
 
             // Apply damage
             if (target) {
-                // Initialize stats for target if not exists
-                if (!gameState.stats[target.name]) {
-                    gameState.stats[target.name] = {
-                        damageDealt: 0,
-                        damageTaken: 0,
-                        healingDone: 0,
-                        specialMoves: 0,
-                        turns: 0
-                    };
-                }
-                
-                gameState.stats[shooter.name].damageDealt += result.damage;
-                gameState.stats[target.name].damageTaken += result.damage;
-                
-                const wasAlive = !target.isEliminated;
-                target.hp = Math.max(0, target.hp - result.damage);
-                
-                if (target.hp === 0 && wasAlive) {
-                    target.isEliminated = true;
+                // Check if target is immortal
+                if (target.isImmortal) {
+                    // Immortal player takes no damage
+                    gameState.history.push(`⭐ ${target.name} è immortale e non subisce danni!`);
+                    playSound('heal'); // Suono positivo per indicare l'immortalità
                     
-                    // Show elimination notification to the eliminated player
-                    if (target.name === gameState.playerName && !gameState.isMaster) {
-                        setTimeout(() => showEliminatedNotification(), 500);
-                    }
-                    
-                    playSound('elimination');
-                } else {
-                    playSound('hit');
-                    
-                    // Visual effects for the player who got hit
+                    // Visual effect for immortal player
                     if (target.name === gameState.playerName) {
-                        screenFlash('damage');
-                        createParticles(window.innerWidth / 2, window.innerHeight / 2, 'damage');
+                        screenFlash('heal');
+                        createParticles(window.innerWidth / 2, window.innerHeight / 2, 'heal');
+                    }
+                } else {
+                    // Initialize stats for target if not exists
+                    if (!gameState.stats[target.name]) {
+                        gameState.stats[target.name] = {
+                            damageDealt: 0,
+                            damageTaken: 0,
+                            healingDone: 0,
+                            specialMoves: 0,
+                            turns: 0
+                        };
+                    }
+                    
+                    // Apply multiplier to damage
+                    const multiplier = target.multiplier || 1;
+                    const actualDamage = Math.ceil(result.damage * multiplier); // Arrotonda per eccesso
+                    
+                    gameState.stats[shooter.name].damageDealt += actualDamage;
+                    gameState.stats[target.name].damageTaken += actualDamage;
+                    
+                    const wasAlive = !target.isEliminated;
+                    target.hp = Math.max(0, target.hp - actualDamage);
+                    
+                    // Check Checkmate - auto-eliminate at exact HP value
+                    if (target.checkmateHP && target.hp === target.checkmateHP && !target.isEliminated) {
+                        target.hp = 0;
+                        target.isEliminated = true;
+                        gameState.history.push(`♟️ ${target.name} è stato eliminato da Scacco Matto! (HP = ${target.checkmateHP})`);
+                        
+                        // Show elimination notification
+                        if (target.name === gameState.playerName && !gameState.isMaster) {
+                            setTimeout(() => showEliminatedNotification(), 500);
+                        }
+                        
+                        playSound('elimination');
+                    }
+                    // Check Checkmate - auto-eliminate at exact HP value
+                    else if (target.checkmateHP && target.hp === target.checkmateHP && !target.isEliminated) {
+                        target.hp = 0;
+                        target.isEliminated = true;
+                        gameState.history.push(`♟️ ${target.name} è stato eliminato dallo Scacco Matto! (${target.checkmateHP} HP)`);
+                        
+                        // Show elimination notification
+                        if (target.name === gameState.playerName && !gameState.isMaster) {
+                            setTimeout(() => showEliminatedNotification(), 500);
+                        }
+                        
+                        playSound('elimination');
+                    }
+                    // Check Kraken Mark - auto-eliminate at 10 HP or less
+                    else if (target.krakenMark && target.hp <= 10 && target.hp > 0 && !target.isEliminated) {
+                        target.hp = 0;
+                        target.isEliminated = true;
+                        gameState.history.push(`🐙 ${target.name} è stato eliminato dal Marchio del Kraken! (HP ≤ 10)`);
+                        
+                        // Show elimination notification
+                        if (target.name === gameState.playerName && !gameState.isMaster) {
+                            setTimeout(() => showEliminatedNotification(), 500);
+                        }
+                        
+                        playSound('elimination');
+                    } else if (target.hp === 0 && wasAlive) {
+                        target.isEliminated = true;
+                        
+                        // Show elimination notification to the eliminated player
+                        if (target.name === gameState.playerName && !gameState.isMaster) {
+                            setTimeout(() => showEliminatedNotification(), 500);
+                        }
+                        
+                        playSound('elimination');
+                    } else {
+                        playSound('hit');
+                        
+                        // Visual effects for the player who got hit
+                        if (target.name === gameState.playerName) {
+                            screenFlash('damage');
+                            createParticles(window.innerWidth / 2, window.innerWidth / 2, 'damage');
+                        }
+                    }
+                    
+                    animateHP(result.targetIndex, -actualDamage);
+                    
+                    // Add multiplier info to history
+                    if (multiplier !== 1) {
+                        gameState.history.push(`✨ ${target.name} ha un moltiplicatore x${multiplier}! Danno effettivo: ${actualDamage}`);
                     }
                 }
-                
-                animateHP(result.targetIndex, -result.damage);
             }
 
             // Apply heal
             if (result.selfHeal > 0) {
-                shooter.hp += result.selfHeal;
-                gameState.stats[shooter.name].healingDone += result.selfHeal;
-                animateHP(result.shooterIndex, result.selfHeal);
+                // Apply multiplier to heal
+                const multiplier = shooter.multiplier || 1;
+                const actualHeal = Math.ceil(result.selfHeal * multiplier); // Arrotonda per eccesso
+                
+                shooter.hp += actualHeal;
+                gameState.stats[shooter.name].healingDone += actualHeal;
+                animateHP(result.shooterIndex, actualHeal);
                 playSound('heal');
                 
                 // Visual effects for healer
                 if (shooter.name === gameState.playerName) {
                     screenFlash('heal');
                     createParticles(window.innerWidth / 2, window.innerHeight / 2, 'heal');
+                }
+                
+                // Add multiplier info to history
+                if (multiplier !== 1) {
+                    gameState.history.push(`✨ ${shooter.name} ha un moltiplicatore x${multiplier}! Cura effettiva: ${actualHeal}`);
                 }
             }
             
@@ -1723,6 +2468,9 @@
             if (result.selfHeal > 0) historyText += ` | ${shooter.name} si cura di ${result.selfHeal}`;
             
             gameState.history.push(historyText);
+
+            // Reset temporary effects for the player who just played
+            resetTemporaryEffects(result.shooterIndex);
 
             // Next turn
             const nextTurn = getNextActiveTurn();
@@ -1864,11 +2612,53 @@
                     newGameBtn.textContent = '🎮 Nuova Partita';
                     newGameBtn.style.cssText = 'margin-top: 20px; width: auto; padding: 15px 30px;';
                     newGameBtn.onclick = () => {
-                        location.reload();
+                        startNewGame();
                     };
                     notification.appendChild(newGameBtn);
                 }, 3000);
             }
+        }
+        
+        function startNewGame() {
+            if (!gameState.isMaster) return;
+            
+            if (!confirm('Vuoi iniziare una nuova partita con gli stessi giocatori?')) return;
+            
+            // Reset game state keeping players connected
+            const resetPlayers = gameState.players.map(player => ({
+                ...player,
+                hp: gameState.initialHP || 70,
+                isEliminated: false,
+                isImmortal: false,
+                multiplier: 1,
+                multiplierAppliedBy: null,
+                skipTurn: false,
+                customDiceCount: null,
+                krakenMark: false,
+                checkmateHP: null,
+                temporaryEffects: {
+                    immortal: false,
+                    multiplier: false,
+                    skipTurn: false,
+                    customDice: false
+                }
+                // Mantiene: name, isMaster, connected
+            }));
+            
+            // Reset game data
+            database.ref('games/' + gameState.gameCode).update({
+                players: resetPlayers,
+                currentTurn: 0,
+                history: ['🎮 Nuova partita iniziata!'],
+                stats: {},
+                gameEnded: false,
+                winner: null,
+                startTime: Date.now(),
+                direction: 'clockwise'
+            });
+            
+            // Reload page to reset UI
+            location.reload();
         }
         
         function getGameDuration() {
@@ -1894,7 +2684,13 @@
                     nextIndex = (nextIndex - 1 + gameState.players.length) % gameState.players.length;
                 }
                 attempts++;
-            } while (gameState.players[nextIndex].isEliminated && attempts < gameState.players.length);
+                
+                // Se il giocatore ha skipTurn attivo, aggiungilo alla history e continua
+                if (gameState.players[nextIndex].skipTurn && !gameState.players[nextIndex].isEliminated) {
+                    gameState.history.push(`⏭️ ${gameState.players[nextIndex].name} salta il turno`);
+                }
+                
+            } while ((gameState.players[nextIndex].isEliminated || gameState.players[nextIndex].skipTurn) && attempts < gameState.players.length);
 
             return nextIndex;
         }
@@ -1930,75 +2726,137 @@
             if (!window.AudioContext && !window.webkitAudioContext) return;
             
             const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-            
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
             
             switch(type) {
                 case 'hit':
-                    // Suono di colpo - discendente
-                    oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
-                    oscillator.frequency.exponentialRampToValueAtTime(150, audioContext.currentTime + 0.2);
-                    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
-                    oscillator.type = 'square';
-                    oscillator.start(audioContext.currentTime);
-                    oscillator.stop(audioContext.currentTime + 0.2);
+                    // Suono di colpo potenziato - effetto esplosivo
+                    const hitOsc = audioContext.createOscillator();
+                    const hitGain = audioContext.createGain();
+                    const hitNoise = audioContext.createBufferSource();
+                    const hitNoiseGain = audioContext.createGain();
+                    
+                    // Crea rumore bianco per l'impatto
+                    const hitBuffer = audioContext.createBuffer(1, audioContext.sampleRate * 0.1, audioContext.sampleRate);
+                    const hitData = hitBuffer.getChannelData(0);
+                    for (let i = 0; i < hitBuffer.length; i++) {
+                        hitData[i] = Math.random() * 2 - 1;
+                    }
+                    hitNoise.buffer = hitBuffer;
+                    
+                    hitOsc.connect(hitGain);
+                    hitGain.connect(audioContext.destination);
+                    hitNoise.connect(hitNoiseGain);
+                    hitNoiseGain.connect(audioContext.destination);
+                    
+                    hitOsc.frequency.setValueAtTime(500, audioContext.currentTime);
+                    hitOsc.frequency.exponentialRampToValueAtTime(100, audioContext.currentTime + 0.15);
+                    hitGain.gain.setValueAtTime(0.4, audioContext.currentTime);
+                    hitGain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+                    hitNoiseGain.gain.setValueAtTime(0.3, audioContext.currentTime);
+                    hitNoiseGain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.08);
+                    
+                    hitOsc.type = 'sawtooth';
+                    hitOsc.start(audioContext.currentTime);
+                    hitOsc.stop(audioContext.currentTime + 0.15);
+                    hitNoise.start(audioContext.currentTime);
+                    hitNoise.stop(audioContext.currentTime + 0.08);
                     break;
                     
                 case 'heal':
-                    // Suono di cura - ascendente armonioso
-                    oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
-                    oscillator.frequency.exponentialRampToValueAtTime(800, audioContext.currentTime + 0.3);
-                    gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
-                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-                    oscillator.type = 'sine';
-                    oscillator.start(audioContext.currentTime);
-                    oscillator.stop(audioContext.currentTime + 0.3);
-                    break;
-                    
-                case 'elimination':
-                    // Suono di eliminazione - drammatico
-                    oscillator.frequency.setValueAtTime(600, audioContext.currentTime);
-                    oscillator.frequency.exponentialRampToValueAtTime(50, audioContext.currentTime + 0.5);
-                    gainNode.gain.setValueAtTime(0.4, audioContext.currentTime);
-                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-                    oscillator.type = 'sawtooth';
-                    oscillator.start(audioContext.currentTime);
-                    oscillator.stop(audioContext.currentTime + 0.5);
-                    break;
-                    
-                case 'revive':
-                    // Suono di rianimazione - positivo e crescente
-                    oscillator.frequency.setValueAtTime(300, audioContext.currentTime);
-                    oscillator.frequency.exponentialRampToValueAtTime(1000, audioContext.currentTime + 0.4);
-                    gainNode.gain.setValueAtTime(0.25, audioContext.currentTime);
-                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
-                    oscillator.type = 'triangle';
-                    oscillator.start(audioContext.currentTime);
-                    oscillator.stop(audioContext.currentTime + 0.4);
-                    break;
-                    
-                case 'poker':
-                    // Suono di vittoria - triplo tono celebrativo
-                    const playVictoryTone = (freq, delay) => {
+                    // Suono di cura magico - arpeggio ascendente con riverbero
+                    const healFreqs = [261.63, 329.63, 392.00, 523.25]; // C4, E4, G4, C5
+                    healFreqs.forEach((freq, i) => {
                         const osc = audioContext.createOscillator();
                         const gain = audioContext.createGain();
                         osc.connect(gain);
                         gain.connect(audioContext.destination);
                         osc.frequency.value = freq;
                         osc.type = 'sine';
-                        gain.gain.setValueAtTime(0.3, audioContext.currentTime + delay);
-                        gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + delay + 0.3);
+                        const delay = i * 0.08;
+                        gain.gain.setValueAtTime(0.2, audioContext.currentTime + delay);
+                        gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + delay + 0.4);
                         osc.start(audioContext.currentTime + delay);
-                        osc.stop(audioContext.currentTime + delay + 0.3);
-                    };
-                    playVictoryTone(523, 0);    // C5
-                    playVictoryTone(659, 0.15); // E5
-                    playVictoryTone(784, 0.3);  // G5
-                    return; // Don't use the default oscillator
+                        osc.stop(audioContext.currentTime + delay + 0.4);
+                    });
+                    break;
+                    
+                case 'elimination':
+                    // Suono di eliminazione epico - discesa drammatica
+                    const elimOsc1 = audioContext.createOscillator();
+                    const elimOsc2 = audioContext.createOscillator();
+                    const elimGain = audioContext.createGain();
+                    
+                    elimOsc1.connect(elimGain);
+                    elimOsc2.connect(elimGain);
+                    elimGain.connect(audioContext.destination);
+                    
+                    elimOsc1.frequency.setValueAtTime(800, audioContext.currentTime);
+                    elimOsc1.frequency.exponentialRampToValueAtTime(40, audioContext.currentTime + 0.6);
+                    elimOsc2.frequency.setValueAtTime(400, audioContext.currentTime);
+                    elimOsc2.frequency.exponentialRampToValueAtTime(20, audioContext.currentTime + 0.6);
+                    
+                    elimGain.gain.setValueAtTime(0.5, audioContext.currentTime);
+                    elimGain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.6);
+                    
+                    elimOsc1.type = 'sawtooth';
+                    elimOsc2.type = 'square';
+                    elimOsc1.start(audioContext.currentTime);
+                    elimOsc2.start(audioContext.currentTime);
+                    elimOsc1.stop(audioContext.currentTime + 0.6);
+                    elimOsc2.stop(audioContext.currentTime + 0.6);
+                    break;
+                    
+                case 'revive':
+                    // Suono di rianimazione celestiale - campane magiche
+                    const reviveFreqs = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+                    reviveFreqs.forEach((freq, i) => {
+                        const osc = audioContext.createOscillator();
+                        const gain = audioContext.createGain();
+                        osc.connect(gain);
+                        gain.connect(audioContext.destination);
+                        osc.frequency.value = freq;
+                        osc.type = 'triangle';
+                        const delay = i * 0.1;
+                        gain.gain.setValueAtTime(0.25, audioContext.currentTime + delay);
+                        gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + delay + 0.5);
+                        osc.start(audioContext.currentTime + delay);
+                        osc.stop(audioContext.currentTime + delay + 0.5);
+                    });
+                    break;
+                    
+                case 'poker':
+                    // Suono di vittoria epico - fanfara orchestrale
+                    const victorySequence = [
+                        { freq: 523.25, time: 0 },     // C5
+                        { freq: 659.25, time: 0.12 },  // E5
+                        { freq: 783.99, time: 0.24 },  // G5
+                        { freq: 1046.50, time: 0.36 }, // C6
+                        { freq: 1318.51, time: 0.48 }  // E6
+                    ];
+                    
+                    victorySequence.forEach(note => {
+                        const osc1 = audioContext.createOscillator();
+                        const osc2 = audioContext.createOscillator();
+                        const gain = audioContext.createGain();
+                        
+                        osc1.connect(gain);
+                        osc2.connect(gain);
+                        gain.connect(audioContext.destination);
+                        
+                        osc1.frequency.value = note.freq;
+                        osc2.frequency.value = note.freq * 1.5;
+                        osc1.type = 'sine';
+                        osc2.type = 'triangle';
+                        
+                        gain.gain.setValueAtTime(0.35, audioContext.currentTime + note.time);
+                        gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + note.time + 0.4);
+                        
+                        osc1.start(audioContext.currentTime + note.time);
+                        osc2.start(audioContext.currentTime + note.time);
+                        osc1.stop(audioContext.currentTime + note.time + 0.4);
+                        osc2.stop(audioContext.currentTime + note.time + 0.4);
+                    });
+                    return;
             }
         }
         
@@ -2109,21 +2967,6 @@
             database.ref('games/' + gameState.gameCode + '/history').set(gameState.history);
         }
 
-        function updateDiceCount() {
-            if (!gameState.isMaster) return;
-            
-            const count = parseInt(document.getElementById('dice-count').value);
-            if (count < 1 || count > 4) {
-                alert('Numero dadi deve essere tra 1 e 4!');
-                return;
-            }
-            
-            database.ref('games/' + gameState.gameCode).update({ diceCount: count });
-            
-            gameState.history.push(`🎲 Dadi impostati a ${count}`);
-            database.ref('games/' + gameState.gameCode + '/history').set(gameState.history);
-        }
-
         function modifyHP(type) {
             if (!gameState.isMaster) return;
             
@@ -2145,16 +2988,50 @@
             playerIndices.forEach(playerIndex => {
                 const player = gameState.players[playerIndex];
                 
+                // Apply multiplier
+                const multiplier = player.multiplier || 1;
+                const actualAmount = Math.ceil(amount * multiplier); // Arrotonda per eccesso
+                
                 if (type === 'damage') {
-                    player.hp = Math.max(0, player.hp - amount);
-                    if (player.hp === 0) player.isEliminated = true;
-                    animateHP(playerIndex, -amount);
-                    gameState.history.push(`💥 ${player.name} riceve ${amount} danni (Master)`);
+                    // Check immortality
+                    if (player.isImmortal) {
+                        gameState.history.push(`⭐ ${player.name} è immortale e non subisce danni! (Master)`);
+                    } else {
+                        player.hp = Math.max(0, player.hp - actualAmount);
+                        
+                        // Check Checkmate - auto-eliminate at exact HP value
+                        if (player.checkmateHP && player.hp === player.checkmateHP && !player.isEliminated) {
+                            player.hp = 0;
+                            player.isEliminated = true;
+                            gameState.history.push(`♟️ ${player.name} è stato eliminato da Scacco Matto! (HP = ${player.checkmateHP})`);
+                            playSound('elimination');
+                        }
+                        // Check Kraken Mark - auto-eliminate at 10 HP or less
+                        else if (player.krakenMark && player.hp <= 10 && player.hp > 0 && !player.isEliminated) {
+                            player.hp = 0;
+                            player.isEliminated = true;
+                            gameState.history.push(`🐙 ${player.name} è stato eliminato dal Marchio del Kraken! (HP ≤ 10)`);
+                            playSound('elimination');
+                        } else if (player.hp === 0) {
+                            player.isEliminated = true;
+                        }
+                        
+                        animateHP(playerIndex, -actualAmount);
+                        if (multiplier !== 1) {
+                            gameState.history.push(`💥 ${player.name} riceve ${actualAmount} danni (x${multiplier}) (Master)`);
+                        } else {
+                            gameState.history.push(`💥 ${player.name} riceve ${actualAmount} danni (Master)`);
+                        }
+                    }
                 } else {
-                    player.hp += amount;
+                    player.hp += actualAmount;
                     if (player.isEliminated) player.isEliminated = false;
-                    animateHP(playerIndex, amount);
-                    gameState.history.push(`💚 ${player.name} recupera ${amount} HP (Master)`);
+                    animateHP(playerIndex, actualAmount);
+                    if (multiplier !== 1) {
+                        gameState.history.push(`💚 ${player.name} recupera ${actualAmount} HP (x${multiplier}) (Master)`);
+                    } else {
+                        gameState.history.push(`💚 ${player.name} recupera ${actualAmount} HP (Master)`);
+                    }
                 }
             });
             
@@ -2291,6 +3168,385 @@
                 clearInterval(timerInterval);
             }
             startTimer();
+        }
+        
+        function showQRModal() {
+            if (!gameState.isMaster) return;
+            
+            const selectedIndex = parseInt(document.getElementById('qr-player-select').value);
+            const selectedPlayer = gameState.players[selectedIndex];
+            
+            if (!selectedPlayer) {
+                alert('Seleziona un giocatore!');
+                return;
+            }
+            
+            const modal = document.getElementById('qr-modal');
+            const qrcodeContainer = document.getElementById('qrcode-modal');
+            const gameCodeDisplay = document.getElementById('modal-game-code');
+            
+            // Clear previous QR code
+            qrcodeContainer.innerHTML = '';
+            
+            // Generate new QR code with player name
+            const gameUrl = window.location.origin + window.location.pathname + '?game=' + gameState.gameCode + '&player=' + encodeURIComponent(selectedPlayer.name);
+            new QRCode(qrcodeContainer, {
+                text: gameUrl,
+                width: 256,
+                height: 256,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+            
+            // Display game code and player name
+            gameCodeDisplay.textContent = gameState.gameCode + ' - ' + selectedPlayer.name;
+            
+            // Show modal
+            modal.classList.add('show');
+        }
+        
+        function closeQRModal() {
+            const modal = document.getElementById('qr-modal');
+            modal.classList.remove('show');
+        }
+        
+        function toggleImmortality() {
+            if (!gameState.isMaster) return;
+            
+            const select = document.getElementById('immortal-players');
+            const selectedIndices = Array.from(select.selectedOptions).map(opt => parseInt(opt.value));
+            
+            if (selectedIndices.length === 0) {
+                alert('Seleziona almeno un giocatore!');
+                return;
+            }
+            
+            // Toggle immortality for selected players
+            selectedIndices.forEach(index => {
+                const player = gameState.players[index];
+                player.isImmortal = !player.isImmortal;
+                
+                // Mark as temporary effect
+                if (!player.temporaryEffects) {
+                    player.temporaryEffects = {};
+                }
+                player.temporaryEffects.immortal = player.isImmortal;
+            });
+            
+            // Update Firebase
+            database.ref('games/' + gameState.gameCode + '/players').set(gameState.players);
+            
+            // Add to history
+            const playerNames = selectedIndices.map(i => gameState.players[i].name).join(', ');
+            const status = gameState.players[selectedIndices[0]].isImmortal ? 'attivata' : 'disattivata';
+            gameState.history.push(`⭐ Immortalità ${status} per: ${playerNames} (temp)`);
+            database.ref('games/' + gameState.gameCode + '/history').set(gameState.history);
+        }
+        
+        function setMultiplier(multiplierValue) {
+            if (!gameState.isMaster) return;
+            
+            const select = document.getElementById('multiplier-players');
+            const selectedIndices = Array.from(select.selectedOptions).map(opt => parseInt(opt.value));
+            
+            if (selectedIndices.length === 0) {
+                alert('Seleziona almeno un giocatore!');
+                return;
+            }
+            
+            // Set multiplier for selected players
+            const currentPlayerIndex = gameState.currentTurn;
+            
+            selectedIndices.forEach(index => {
+                const player = gameState.players[index];
+                player.multiplier = multiplierValue;
+                player.multiplierAppliedBy = currentPlayerIndex; // Salva chi ha applicato il moltiplicatore
+                
+                // Mark as temporary effect
+                if (!player.temporaryEffects) {
+                    player.temporaryEffects = {};
+                }
+                player.temporaryEffects.multiplier = true;
+            });
+            
+            // Update Firebase
+            database.ref('games/' + gameState.gameCode + '/players').set(gameState.players);
+            
+            // Add to history
+            const playerNames = selectedIndices.map(i => gameState.players[i].name).join(', ');
+            const applierName = gameState.players[currentPlayerIndex].name;
+            const multiplierText = multiplierValue === 0.5 ? '0.5 (metà danni)' : '2 (danni doppi)';
+            gameState.history.push(`✨ ${applierName} applica moltiplicatore x${multiplierText} a: ${playerNames} (fino al suo prossimo turno)`);
+            database.ref('games/' + gameState.gameCode + '/history').set(gameState.history);
+        }
+        
+        function removeMultiplier() {
+            if (!gameState.isMaster) return;
+            
+            const select = document.getElementById('multiplier-players');
+            const selectedIndices = Array.from(select.selectedOptions).map(opt => parseInt(opt.value));
+            
+            if (selectedIndices.length === 0) {
+                alert('Seleziona almeno un giocatore!');
+                return;
+            }
+            
+            // Remove multiplier (set to 1) for selected players
+            selectedIndices.forEach(index => {
+                const player = gameState.players[index];
+                player.multiplier = 1;
+                player.multiplierAppliedBy = null;
+                if (player.temporaryEffects) {
+                    player.temporaryEffects.multiplier = false;
+                }
+            });
+            
+            // Update Firebase
+            database.ref('games/' + gameState.gameCode + '/players').set(gameState.players);
+            
+            // Add to history
+            const playerNames = selectedIndices.map(i => gameState.players[i].name).join(', ');
+            gameState.history.push(`❌ Moltiplicatore rimosso per: ${playerNames}`);
+            database.ref('games/' + gameState.gameCode + '/history').set(gameState.history);
+        }
+        
+        function toggleSkipTurn() {
+            if (!gameState.isMaster) return;
+            
+            const select = document.getElementById('skip-turn-players');
+            const selectedIndices = Array.from(select.selectedOptions).map(opt => parseInt(opt.value));
+            
+            if (selectedIndices.length === 0) {
+                alert('Seleziona almeno un giocatore!');
+                return;
+            }
+            
+            // Toggle skip turn for selected players
+            selectedIndices.forEach(index => {
+                const player = gameState.players[index];
+                player.skipTurn = !player.skipTurn;
+                
+                // Mark as temporary effect
+                if (!player.temporaryEffects) {
+                    player.temporaryEffects = {};
+                }
+                player.temporaryEffects.skipTurn = player.skipTurn;
+            });
+            
+            // Update Firebase
+            database.ref('games/' + gameState.gameCode + '/players').set(gameState.players);
+            
+            // Add to history
+            const playerNames = selectedIndices.map(i => gameState.players[i].name).join(', ');
+            const status = gameState.players[selectedIndices[0]].skipTurn ? 'attivato' : 'disattivato';
+            gameState.history.push(`⏭️ Salta turno ${status} per: ${playerNames}`);
+            database.ref('games/' + gameState.gameCode + '/history').set(gameState.history);
+        }
+        
+        function setCustomDice() {
+            if (!gameState.isMaster) return;
+            
+            const select = document.getElementById('custom-dice-players');
+            const selectedIndices = Array.from(select.selectedOptions).map(opt => parseInt(opt.value));
+            const diceValue = parseInt(document.getElementById('custom-dice-value').value);
+            
+            if (selectedIndices.length === 0) {
+                alert('Seleziona almeno un giocatore!');
+                return;
+            }
+            
+            if (!diceValue || diceValue < 1 || diceValue > 6) {
+                alert('Inserisci un numero di dadi valido (1-6)!');
+                return;
+            }
+            
+            // Set custom dice for selected players
+            selectedIndices.forEach(index => {
+                const player = gameState.players[index];
+                player.customDiceCount = diceValue;
+                
+                // Mark as temporary effect
+                if (!player.temporaryEffects) {
+                    player.temporaryEffects = {};
+                }
+                player.temporaryEffects.customDice = true;
+            });
+            
+            // Update Firebase
+            database.ref('games/' + gameState.gameCode + '/players').set(gameState.players);
+            
+            // Add to history
+            const playerNames = selectedIndices.map(i => gameState.players[i].name).join(', ');
+            gameState.history.push(`🎲 Dadi personalizzati (${diceValue}) assegnati a: ${playerNames} (temp)`);
+            database.ref('games/' + gameState.gameCode + '/history').set(gameState.history);
+        }
+        
+        function removeCustomDice() {
+            if (!gameState.isMaster) return;
+            
+            const select = document.getElementById('custom-dice-players');
+            const selectedIndices = Array.from(select.selectedOptions).map(opt => parseInt(opt.value));
+            
+            if (selectedIndices.length === 0) {
+                alert('Seleziona almeno un giocatore!');
+                return;
+            }
+            
+            // Remove custom dice for selected players
+            selectedIndices.forEach(index => {
+                const player = gameState.players[index];
+                player.customDiceCount = null;
+                if (player.temporaryEffects) {
+                    player.temporaryEffects.customDice = false;
+                }
+            });
+            
+            // Update Firebase
+            database.ref('games/' + gameState.gameCode + '/players').set(gameState.players);
+            
+            // Add to history
+            const playerNames = selectedIndices.map(i => gameState.players[i].name).join(', ');
+            gameState.history.push(`❌ Dadi personalizzati rimossi per: ${playerNames}`);
+            database.ref('games/' + gameState.gameCode + '/history').set(gameState.history);
+        }
+        
+        function resetTemporaryEffects(playerIndex) {
+            const player = gameState.players[playerIndex];
+            if (!player || !player.temporaryEffects) return;
+            
+            let resetMessage = [];
+            
+            // Reset immortality if temporary (only for the player who just played)
+            if (player.temporaryEffects.immortal && player.isImmortal) {
+                player.isImmortal = false;
+                resetMessage.push('immortalità');
+            }
+            
+            // Reset multipliers for ALL players if this player applied them
+            // (moltiplicatori durano fino al turno del giocatore che li ha applicati)
+            let multiplierResetPlayers = [];
+            gameState.players.forEach((p, index) => {
+                if (p.multiplierAppliedBy === playerIndex && p.multiplier !== 1) {
+                    multiplierResetPlayers.push(p.name);
+                    p.multiplier = 1;
+                    p.multiplierAppliedBy = null;
+                    if (p.temporaryEffects) {
+                        p.temporaryEffects.multiplier = false;
+                    }
+                }
+            });
+            
+            if (multiplierResetPlayers.length > 0) {
+                gameState.history.push(`⏱️ Moltiplicatori rimossi da: ${multiplierResetPlayers.join(', ')} (fine effetto di ${player.name})`);
+            }
+            
+            // Reset skip turn if temporary (but only after it was skipped)
+            // Skip turn will be handled separately in getNextActiveTurn
+            
+            // Reset custom dice if temporary (only for the player who just played)
+            if (player.temporaryEffects.customDice && player.customDiceCount) {
+                player.customDiceCount = null;
+                resetMessage.push('dadi personalizzati');
+            }
+            
+            // Clear temporary flags for the player who just played
+            player.temporaryEffects = {
+                immortal: false,
+                multiplier: false,
+                skipTurn: player.temporaryEffects.skipTurn, // Mantieni skipTurn
+                customDice: false
+            };
+            
+            // Add history message if something was reset for this player
+            if (resetMessage.length > 0) {
+                gameState.history.push(`⏱️ ${player.name}: reset ${resetMessage.join(', ')}`);
+            }
+        }
+        
+        function toggleKrakenMark() {
+            if (!gameState.isMaster) return;
+            
+            const select = document.getElementById('kraken-mark-players');
+            const selectedIndices = Array.from(select.selectedOptions).map(opt => parseInt(opt.value));
+            
+            if (selectedIndices.length === 0) {
+                alert('Seleziona almeno un giocatore!');
+                return;
+            }
+            
+            // Toggle kraken mark for selected players
+            selectedIndices.forEach(index => {
+                const player = gameState.players[index];
+                player.krakenMark = !player.krakenMark;
+            });
+            
+            // Update Firebase
+            database.ref('games/' + gameState.gameCode + '/players').set(gameState.players);
+            
+            // Add to history
+            const playerNames = selectedIndices.map(i => gameState.players[i].name).join(', ');
+            const status = gameState.players[selectedIndices[0]].krakenMark ? 'applicato' : 'rimosso';
+            gameState.history.push(`🐙 Marchio del Kraken ${status} a: ${playerNames}`);
+            database.ref('games/' + gameState.gameCode + '/history').set(gameState.history);
+        }
+        
+        function setCheckmate() {
+            if (!gameState.isMaster) return;
+            
+            const select = document.getElementById('checkmate-players');
+            const selectedIndices = Array.from(select.selectedOptions).map(opt => parseInt(opt.value));
+            const checkmateValue = parseInt(document.getElementById('checkmate-value').value);
+            
+            if (selectedIndices.length === 0) {
+                alert('Seleziona almeno un giocatore!');
+                return;
+            }
+            
+            if (!checkmateValue || checkmateValue < 1 || checkmateValue > 100) {
+                alert('Inserisci un valore HP valido (1-100)!');
+                return;
+            }
+            
+            // Set checkmate for selected players
+            selectedIndices.forEach(index => {
+                const player = gameState.players[index];
+                player.checkmateHP = checkmateValue;
+            });
+            
+            // Update Firebase
+            database.ref('games/' + gameState.gameCode + '/players').set(gameState.players);
+            
+            // Add to history
+            const playerNames = selectedIndices.map(i => gameState.players[i].name).join(', ');
+            gameState.history.push(`♟️ Scacco Matto (${checkmateValue} HP) applicato a: ${playerNames}`);
+            database.ref('games/' + gameState.gameCode + '/history').set(gameState.history);
+        }
+        
+        function removeCheckmate() {
+            if (!gameState.isMaster) return;
+            
+            const select = document.getElementById('checkmate-players');
+            const selectedIndices = Array.from(select.selectedOptions).map(opt => parseInt(opt.value));
+            
+            if (selectedIndices.length === 0) {
+                alert('Seleziona almeno un giocatore!');
+                return;
+            }
+            
+            // Remove checkmate for selected players
+            selectedIndices.forEach(index => {
+                const player = gameState.players[index];
+                player.checkmateHP = null;
+            });
+            
+            // Update Firebase
+            database.ref('games/' + gameState.gameCode + '/players').set(gameState.players);
+            
+            // Add to history
+            const playerNames = selectedIndices.map(i => gameState.players[i].name).join(', ');
+            gameState.history.push(`❌ Scacco Matto rimosso da: ${playerNames}`);
+            database.ref('games/' + gameState.gameCode + '/history').set(gameState.history);
         }
     </script>
 </body>
